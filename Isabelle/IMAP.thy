@@ -4,7 +4,7 @@ imports ORSet
 begin
 	
 (* 'a is the set of all foldernames, 'b is the set of all messagenames  *)
-type_synonym ('a, 'b) imap = "'a orset \<times> ('a \<times> ('b \<times> 'b) orset) set"
+type_synonym ('a, 'b) imap = "'a orset \<times> ('a \<times> 'b set) set"
 	
 abbreviation folderset :: 
   "('a, 'b) imap \<Rightarrow> 'a orset" 
@@ -12,19 +12,19 @@ where
   "folderset I \<equiv> fst I"
   
 abbreviation filesystem :: 
-  "('a, 'b) imap \<Rightarrow> ('a \<times> ('b \<times> 'b) orset) set" 
+  "('a, 'b) imap \<Rightarrow> ('a \<times> 'b set) set" 
 where
   "filesystem I \<equiv> snd I"
   
-definition CREATE ::
+definition CREATE_atSource ::
+	"'a \<Rightarrow> ('a, 'b) imap \<Rightarrow> bool"
+where
+	"CREATE_atSource f I = (\<nexists> n . (f,n) \<in> folderset I)"
+  
+definition CREATE_downstream ::
 	"'a \<Rightarrow> nat \<Rightarrow> ('a, 'b) imap \<Rightarrow> ('a, 'b) imap"
 where
-	"CREATE f n I = (add f n (folderset I), filesystem I \<union> {(f,{})})"
-	
-definition CREATE2 ::
-	"'a \<Rightarrow> nat \<Rightarrow> ('a, 'b) imap \<Rightarrow> ('a, 'b) imap"
-where
-	"CREATE2 f n I = (add f n (folderset I), filesystem I)"
+	"CREATE_downstream f n I = (add f n (folderset I), filesystem I \<union> {(f,{})})"
 	
 (*computes the R set for a mailbox*)
 definition DELETE_atSource ::
@@ -37,11 +37,13 @@ definition DELETE_downstream ::
 	where
 	"DELETE_downstream R I = (remove_downstream R (folderset I), filesystem I - {(a,b). (a,b) \<in> filesystem I \<and> (\<exists> e . (a,e) \<in> R)})"
 	
-definition DELETE_downstream2 ::
-	"'a orset \<Rightarrow> ('a, 'b) imap \<Rightarrow> ('a, 'b) imap"
-	where
-	"DELETE_downstream2 R I = (remove_downstream R (folderset I), filesystem I)"
+definition APPEND_downstream ::
+  "'a \<Rightarrow> 'b \<Rightarrow> ('a, 'b) imap \<Rightarrow> ('a, 'b) imap"
+where
+  "APPEND_downstream f m I = (folderset I, filesystem I \<union> {(a,b).(\<exists> c . (a,c) \<in> filesystem I \<and> a = f \<and> b \<union> {m} = c)})"
 
+(*rewrite filesystem with option type?*)
+  
 lemma commCREATE:
 fixes
   I :: "('a,'b) imap" and
@@ -52,9 +54,9 @@ fixes
 assumes
 	n1neqn2: "n1 \<noteq> n2"
 shows 
-	"CREATE e1 n1 (CREATE e2 n2 I) = CREATE e2 n2 (CREATE e1 n1 I)"
+	"CREATE_downstream e1 n1 (CREATE_downstream e2 n2 I) = CREATE_downstream e2 n2 (CREATE_downstream e1 n1 I)"
 proof -
-	show ?thesis unfolding CREATE_def using commAdd n1neqn2 by fastforce
+	show ?thesis unfolding CREATE_downstream_def using commAdd n1neqn2 by fastforce
 qed
 	
 lemma commDELETE:
@@ -81,13 +83,16 @@ fixes
   n :: nat
 assumes 
   O1R1: " R1 = DELETE_atSource e1 I" and
-	freshn: "fresh n (folderset I)"
-shows "DELETE_downstream R1 (CREATE e2 n I) = CREATE e2 n (DELETE_downstream R1 I)"
+	freshn: "fresh n (folderset I)" and
+	O2pre: "CREATE_atSource e2 I"
+shows "DELETE_downstream R1 (CREATE_downstream e2 n I) = CREATE_downstream e2 n (DELETE_downstream R1 I)"
 proof -
-	have "folderset (DELETE_downstream R1 (CREATE e2 n I)) = folderset (CREATE e2 n (DELETE_downstream R1 I))"
-		using O1R1 freshn unfolding DELETE_downstream_def CREATE_def fresh_def commAddRemove DELETE_atSource_def remove_atSource_def remove_downstream_def add_def insert_Diff_if by auto
-			
-		show ?thesis sorry			
+	have fset: "folderset (DELETE_downstream R1 (CREATE_downstream e2 n I)) = folderset (CREATE_downstream e2 n (DELETE_downstream R1 I))"
+		using O1R1 freshn unfolding DELETE_downstream_def CREATE_downstream_def fresh_def commAddRemove 
+		  DELETE_atSource_def remove_atSource_def remove_downstream_def add_def  by auto		  
+	have "filesystem (DELETE_downstream R1 (CREATE_downstream e2 n I)) = filesystem (CREATE_downstream e2 n (DELETE_downstream R1 I))" 
+	  using O1R1 O2pre unfolding DELETE_downstream_def CREATE_downstream_def DELETE_atSource_def remove_atSource_def CREATE_atSource_def by auto	    
+	thus ?thesis using fset unfolding DELETE_downstream_def by auto
 qed
 	
 end
