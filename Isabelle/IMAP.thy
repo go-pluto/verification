@@ -145,6 +145,16 @@ proof -
 
 	thus ?thesis using validS O1pre unfolding APPEND_downstream_def validState_def APPEND_atSource_def by auto
 qed
+  
+lemma append_folderset:
+fixes
+  I :: "('a, 'b) imap" and
+  f :: "'a" and
+  m :: "'b"
+shows "folderset (APPEND_downstream f m I) = folderset I"
+proof -
+	show ?thesis unfolding APPEND_downstream_def by auto
+qed
 	
 lemma append_filesystem:
 fixes
@@ -182,23 +192,32 @@ fixes
   e1 :: "'a"
 assumes
 	O1pre: "R = DELETE_atSource e1 I" and
-	validS: "validState I" and
-	Delpre: "DELETE_atSource_pre e1 I"
+	validS: "validState I"
 shows "validState (DELETE_downstream e1 R I)"
 proof -
-	have "filesystem (DELETE_downstream e1 R I) e1 = None " unfolding DELETE_downstream_def by simp
-	have "\<forall> f. f \<noteq> e1 \<longrightarrow> (filesystem I) f = (filesystem (DELETE_downstream e1 R I)) f" unfolding DELETE_downstream_def by auto
   have A1: "\<forall> (a,b) \<in> folderset I. a \<noteq> e1 \<longrightarrow> (a,b) \<in> folderset (DELETE_downstream e1 R I)"	
   	using O1pre unfolding DELETE_downstream_def remove_downstream_def DELETE_atSource_def remove_atSource_def by auto
   have "\<forall> (a,_) \<in> folderset (DELETE_downstream e1 R I). a \<noteq> e1" using O1pre 
   	unfolding DELETE_downstream_def remove_downstream_def DELETE_atSource_def remove_atSource_def by auto
-  hence "(\<forall> (a,_) \<in> folderset (DELETE_downstream e1 R I) . (filesystem (DELETE_downstream e1 R I)) a \<noteq> None)" using A1 O1pre validS
+  hence "(\<forall> (a,_) \<in> folderset (DELETE_downstream e1 R I) . (filesystem (DELETE_downstream e1 R I)) a \<noteq> None)" using validS
   	unfolding validState_def  DELETE_downstream_def remove_downstream_def DELETE_atSource_def remove_atSource_def by fastforce
-  
-	thus ?thesis using O1pre validS Delpre A1 unfolding validState_def DELETE_atSource_def DELETE_downstream_def remove_atSource_def 
+	thus ?thesis using validS A1 unfolding validState_def DELETE_atSource_def DELETE_downstream_def remove_atSource_def 
 		remove_downstream_def apply simp by blast
 qed
-	
+  
+lemma create_valid:
+fixes
+  I :: "('a, 'b) imap" and
+  e :: "'a" and
+  n :: nat
+assumes
+	validS: "validState I"
+shows "validState (CREATE_downstream e n I)"
+proof -
+  show ?thesis using validS unfolding CREATE_downstream_def add_def validState_def CREATE_atSource_def apply simp 
+    by (simp add: split_def)
+qed
+
 lemma commAPPEND:
 fixes
   I :: "('a, 'b) imap" and
@@ -221,6 +240,25 @@ proof -
 		by (smt Un_insert_left Un_insert_right case_prodE fun_upd_twist fun_upd_upd map_upd_Some_unfold option.case(2) prod.sel(2) prod.simps(2)) 
 	thus ?thesis using A1	by (simp add: prod_eq_iff)
 qed
-	
+  
+lemma commCREATE_APPEND:
+fixes
+  I :: "('a, 'b) imap" and
+  e :: "'a" and
+  n :: nat and
+  f :: "'a" and
+  m :: "'b"
+assumes 
+  O1pre: " APPEND_atSource f m I" and
+  O2pre: " CREATE_atSource e I"
+shows "APPEND_downstream f m (CREATE_downstream e n I) = CREATE_downstream e n (APPEND_downstream f m I)"
+proof -
+  have "filesystem(APPEND_downstream f m (CREATE_downstream e n I)) = filesystem(CREATE_downstream e n (APPEND_downstream f m I))"
+    using O1pre O2pre
+    unfolding APPEND_atSource_def APPEND_downstream_def CREATE_atSource_def CREATE_downstream_def
+    by (smt case_prodE fun_upd_apply fun_upd_twist option.case_eq_if prod.sel(2))
+	thus ?thesis using append_folderset[of f m I] unfolding APPEND_downstream_def CREATE_downstream_def by auto
+qed
+  
 end
 	
