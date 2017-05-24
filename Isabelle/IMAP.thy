@@ -6,13 +6,13 @@ begin
 (* 'a is the set of all foldernames, 'b is the set of all messagenames  *)
 type_synonym ('a, 'b) imap = "'a orset \<times> ('a \<times> 'b set) set"
 	
-abbreviation folderset :: 
+abbreviation folderset ::
   "('a, 'b) imap \<Rightarrow> 'a orset" 
 where
   "folderset I \<equiv> fst I"
   
-abbreviation filesystem :: 
-  "('a, 'b) imap \<Rightarrow> ('a \<times> 'b set) set" 
+abbreviation filesystem ::
+  "('a, 'b) imap \<Rightarrow> ('a \<times> 'b set) set"
 where
   "filesystem I \<equiv> snd I"
   
@@ -89,7 +89,7 @@ shows "DELETE_downstream R1 (CREATE_downstream e2 n I) = CREATE_downstream e2 n 
 proof -
 	have fset: "folderset (DELETE_downstream R1 (CREATE_downstream e2 n I)) = folderset (CREATE_downstream e2 n (DELETE_downstream R1 I))"
 		using O1R1 freshn unfolding DELETE_downstream_def CREATE_downstream_def fresh_def commAddRemove 
-		  DELETE_atSource_def remove_atSource_def remove_downstream_def add_def  by auto		  
+		  DELETE_atSource_def remove_atSource_def remove_downstream_def add_def by auto		  
 	have "filesystem (DELETE_downstream R1 (CREATE_downstream e2 n I)) = filesystem (CREATE_downstream e2 n (DELETE_downstream R1 I))" 
 	  using O1R1 O2pre unfolding DELETE_downstream_def CREATE_downstream_def DELETE_atSource_def remove_atSource_def CREATE_atSource_def by auto	    
 	thus ?thesis using fset unfolding DELETE_downstream_def by auto
