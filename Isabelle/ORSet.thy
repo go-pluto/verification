@@ -27,9 +27,9 @@ where
   
 definition remove_atSource ::
 	"'element \<Rightarrow> 'element orset \<Rightarrow> 'element orset"
-where
-	"remove_atSource e S = {(e,n).(\<exists> u.(e,u) \<in> S \<and> n = u)}"
-  
+	where
+		"remove_atSource e S = {(a,b) \<in> S. a = e}"
+
 definition remove_downstream ::
   "'element orset \<Rightarrow> 'element orset \<Rightarrow> 'element orset"
 where
@@ -56,7 +56,7 @@ assumes
   O2R2: " R2 = remove_atSource e2 S"
 shows "remove_downstream R2 (remove_downstream R1 S) = remove_downstream R1 (remove_downstream R2 S)"
 proof -
-	show ?thesis using O1R1 O2R2 unfolding remove_atSource_def by auto
+	show ?thesis using O1R1 O2R2 unfolding remove_atSource_def remove_downstream_def by auto
 qed
 
 lemma commAddRemove:
