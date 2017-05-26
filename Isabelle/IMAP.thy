@@ -365,7 +365,49 @@ proof -
   thus ?thesis using A1 A5
     by (smt O1pre O2pre STORE_downstream_def fun_upd_same fun_upd_twist fun_upd_upd option.case_eq_if prod_eqI snd_conv store_not_none)
 qed
-	
+  
+lemma commCREATE_STORE:
+fixes
+  I :: "('a, 'b) imap" and
+  f1 :: "'a" and
+  f2 :: "'a" and
+  mo :: "'b" and
+  mn :: "'b" and
+  n :: nat
+assumes 
+  O1pre: " STORE_atSource f1 mo mn I" and
+  O2pre: " CREATE_atSource f2 I"
+shows "STORE_downstream f1 mo mn (CREATE_downstream f2 n I) = CREATE_downstream f2 n (STORE_downstream f1 mo mn I)"
+proof - 
+  have A1: "folderset (STORE_downstream f1 mo mn (CREATE_downstream f2 n I)) = folderset (CREATE_downstream f2 n (STORE_downstream f1 mo mn I))"
+    by (simp add: CREATE_downstream_def store_folderset)
+  have "filesystem (STORE_downstream f1 mo mn (CREATE_downstream f2 n I)) = filesystem (CREATE_downstream f2 n (STORE_downstream f1 mo mn I))"
+    using O1pre O2pre unfolding STORE_downstream_def CREATE_downstream_def CREATE_atSource_def STORE_atSource_def
+    by (smt case_prodE fun_upd_other fun_upd_twist option.case_eq_if snd_conv)
+  thus ?thesis using A1 by (simp add: prod.expand)
+qed
+  
+lemma commDELETE_STORE:
+fixes
+  I :: "('a, 'b) imap" and
+  f1 :: "'a" and
+  f2 :: "'a" and
+  mo :: "'b" and
+  mn :: "'b" and
+  R :: "'a orset"
+assumes 
+  O1pre: " STORE_atSource f1 mo mn I" and
+  O2pre: " R = DELETE_atSource f2 I"
+shows "STORE_downstream f1 mo mn (DELETE_downstream f2 R I) = DELETE_downstream f2 R (STORE_downstream f1 mo mn I)"
+proof - 
+  have A1: "folderset (STORE_downstream f1 mo mn (DELETE_downstream f2 R I)) = folderset(DELETE_downstream f2 R (STORE_downstream f1 mo mn I))"
+    by (simp add: DELETE_downstream_def store_folderset)
+  have "filesystem (STORE_downstream f1 mo mn (DELETE_downstream f2 R I)) = filesystem(DELETE_downstream f2 R (STORE_downstream f1 mo mn I))"
+    using O1pre O2pre unfolding STORE_downstream_def DELETE_downstream_def DELETE_atSource_def STORE_atSource_def
+    by (simp add: fun_upd_twist option.case_eq_if)
+  thus ?thesis using A1 by (simp add: prod.expand)
+qed
+      
 lemma commCREATE_DELETE:
 fixes
   I :: "('a, 'b) imap" and
