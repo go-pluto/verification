@@ -65,7 +65,7 @@ definition DELETE_downstream ::
 definition APPEND_atSource ::
   "'a \<Rightarrow> 'b \<Rightarrow> ('a, 'b) imap \<Rightarrow> bool"
 where
-  "APPEND_atSource f m I = (\<exists> (a,_) \<in> folderset I . a = f)"
+  "APPEND_atSource f m I = (\<exists> (a,_) \<in> folderset I . a = f \<and> \<not> msgLookup f m I)"
 
 definition APPEND_downstream ::
   "'a \<Rightarrow> 'b \<Rightarrow> ('a, 'b) imap \<Rightarrow> ('a, 'b) imap"
@@ -91,6 +91,20 @@ where
 			None \<Rightarrow> filesystem I | 
 			Some msgset \<Rightarrow> (filesystem I)(f := Some (replaceMsg msgold msgnew msgset)))
 	)"
+	
+definition EXPUNGE_atSource ::
+  "'a \<Rightarrow> 'b \<Rightarrow> ('a, 'b) imap \<Rightarrow> bool"
+where
+  "EXPUNGE_atSource f m I = ((\<exists> (a,_) \<in> folderset I . a = f) \<and> msgLookup f m I)"
+  
+definition EXPUNGE_downstream ::
+  "'a \<Rightarrow> 'b \<Rightarrow> ('a, 'b) imap \<Rightarrow> ('a, 'b) imap"
+  where
+    "EXPUNGE_downstream f m I = 
+    (folderset I, 
+      (case (filesystem I)(f) of 
+        None \<Rightarrow> filesystem I | 
+        Some msgset \<Rightarrow> (filesystem I)(f := Some (msgset - {m}))))"
 	
 -- "########## END OPERATIONS ##########"
 
@@ -182,7 +196,7 @@ shows "validState (APPEND_downstream f1 m1 I)"
 proof -
 	have "folderset (APPEND_downstream f1 m1 I) = folderset I" unfolding APPEND_downstream_def by auto
 	hence "(\<forall>f. filesystem (APPEND_downstream f1 m1 I) f \<noteq> None \<longrightarrow> (\<exists>(a,_)\<in>folderset (APPEND_downstream f1 m1 I). a = f))"
-		by (metis APPEND_atSource_def O1pre validS validState_def append_filesystem)			
+		using O1pre by (metis (no_types, lifting) APPEND_atSource_def append_filesystem case_prod_beta' validS validState_def)
 	thus ?thesis using O1pre validS unfolding validState_def APPEND_downstream_def apply simp
 		by (smt case_prodE fun_upd_apply old.prod.case option.case_eq_if)
 qed
@@ -227,15 +241,48 @@ fixes
   msgold :: "'b" and
   msgnew :: "'b"
 assumes
+  O1pre : "STORE_atSource f msgold msgnew I" and
 	validS: "validState I"
 shows "validState (STORE_downstream f msgold msgnew I)"
 proof -
-  show ?thesis sorry
+  show ?thesis using O1pre validS unfolding STORE_downstream_def STORE_atSource_def msgLookup_def replaceMsg_def
+    by (simp add: case_prod_beta' fun_upd_same option.case_eq_if validState_def)
+qed
+  
+lemma expunge_valid:
+fixes
+  I :: "('a, 'b) imap" and
+  f :: "'a" and
+  m :: "'b"
+assumes
+  O1pre: "EXPUNGE_atSource f m I" and
+	validS: "validState I" 
+shows "validState (EXPUNGE_downstream f m I)"
+proof -
+  show ?thesis using O1pre validS unfolding EXPUNGE_atSource_def EXPUNGE_downstream_def msgLookup_def validState_def
+    by (simp add: case_prod_beta' option.case_eq_if)
 qed
 
 -- "####### END VALIDITY LEMMAS ########"  
 
--- "####### BEGIN COMMUTATIVITY ########"  
+-- "####### BEGIN COMMUTATIVITY ########"
+
+-- "done:"
+-- "CREATE vs CREATE"
+-- "DELETE vs DELETE"
+-- "APPEND vs APPEND"
+-- "STORE vs STORE"
+-- "CREATE vs DELETE"
+-- "CREATE vs APPEND"
+-- "CREATE vs STORE"
+-- "DELETE vs APPEND"
+-- "DELETE vs STORE"
+-- "APPEND vs STORE"
+-- "EXPUNGE vs CREATE"
+-- "EXPUNGE vs DELETE"
+-- "EXPUNGE vs EXPUNGE"
+-- "EXPUNGE vs APPEND"
+-- "EXPUNGE vs STORE"
 
 lemma commCREATE:
 fixes
@@ -289,16 +336,15 @@ fixes
 assumes 
   O1pre: " APPEND_atSource f1 m1 I" and
   O2pre: " APPEND_atSource f2 m2 I" and
-	freshm: "m1 \<noteq> m2" and
-	validS: "validState I"
+	freshm: "m1 \<noteq> m2"
 shows "APPEND_downstream f1 m1 (APPEND_downstream f2 m2 I) = APPEND_downstream f2 m2 (APPEND_downstream f1 m1 I)"
 proof -
 	have A1: "folderset(APPEND_downstream f1 m1 (APPEND_downstream f2 m2 I)) = folderset(APPEND_downstream f2 m2 (APPEND_downstream f1 m1 I))"
 		by (simp add: APPEND_downstream_def)
 		
 	have "filesystem(APPEND_downstream f1 m1 (APPEND_downstream f2 m2 I)) = filesystem(APPEND_downstream f2 m2 (APPEND_downstream f1 m1 I))"
-		using O1pre O2pre freshm validS unfolding APPEND_downstream_def APPEND_atSource_def validState_def apply (simp add: append_valid)
-		by (smt Un_insert_left Un_insert_right case_prodE fun_upd_twist fun_upd_upd map_upd_Some_unfold option.case(2) prod.sel(2) prod.simps(2)) 
+		using O1pre O2pre freshm  unfolding APPEND_downstream_def APPEND_atSource_def msgLookup_def 
+		by (smt Un_insert_right fun_upd_twist fun_upd_upd insert_commute map_upd_Some_unfold option.case_eq_if option.collapse option.simps(3) snd_conv sup_bot.right_neutral)
 	thus ?thesis using A1	by (simp add: prod_eq_iff)
 qed
   
@@ -366,6 +412,26 @@ proof -
     by (smt O1pre O2pre STORE_downstream_def fun_upd_same fun_upd_twist fun_upd_upd option.case_eq_if prod_eqI snd_conv store_not_none)
 qed
   
+lemma commEXPUNGE:
+fixes
+  I :: "('a, 'b) imap" and
+  f1 :: "'a" and
+  f2 :: "'a" and
+  m1 :: "'b" and
+  m2 :: "'b" 
+assumes 
+  O1pre: " EXPUNGE_atSource f1 m1 I" and
+  O2pre: " EXPUNGE_atSource f2 m2 I" 
+shows "EXPUNGE_downstream f1 m1 (EXPUNGE_downstream f2 m2 I) = EXPUNGE_downstream f2 m2 (EXPUNGE_downstream f1 m1 I)"
+proof -
+  have A1: "folderset (EXPUNGE_downstream f1 m1 (EXPUNGE_downstream f2 m2 I)) = folderset (EXPUNGE_downstream f2 m2 (EXPUNGE_downstream f1 m1 I))"
+    unfolding EXPUNGE_downstream_def EXPUNGE_atSource_def by simp
+  have "filesystem (EXPUNGE_downstream f1 m1 (EXPUNGE_downstream f2 m2 I)) = filesystem (EXPUNGE_downstream f2 m2 (EXPUNGE_downstream f1 m1 I))"
+    using O1pre O2pre unfolding EXPUNGE_downstream_def EXPUNGE_atSource_def msgLookup_def
+    by (smt Diff_insert fun_upd_twist fun_upd_upd insert_commute map_upd_Some_unfold option.case_eq_if option.collapse option.simps(3) snd_conv)
+  thus ?thesis using A1 by (simp add: prod_eqI)
+qed
+
 lemma commCREATE_STORE:
 fixes
   I :: "('a, 'b) imap" and
@@ -405,6 +471,30 @@ proof -
   have "filesystem (STORE_downstream f1 mo mn (DELETE_downstream f2 R I)) = filesystem(DELETE_downstream f2 R (STORE_downstream f1 mo mn I))"
     using O1pre O2pre unfolding STORE_downstream_def DELETE_downstream_def DELETE_atSource_def STORE_atSource_def
     by (simp add: fun_upd_twist option.case_eq_if)
+  thus ?thesis using A1 by (simp add: prod.expand)
+qed
+  
+lemma commAPPEND_STORE:
+fixes
+  I :: "('a, 'b) imap" and
+  f1 :: "'a" and
+  f2 :: "'a" and
+  mo :: "'b" and
+  mn :: "'b" and
+  m :: "'b"
+assumes 
+  O1pre: " STORE_atSource f1 mo mn I" and
+  O2pre: " APPEND_atSource f2 m I" and
+  freshmn: "m \<noteq> mn" and
+  freshmo: "m \<noteq> mo"
+shows "STORE_downstream f1 mo mn (APPEND_downstream f2 m I) = APPEND_downstream f2 m (STORE_downstream f1 mo mn I)"
+proof - 
+  have A1: "folderset (STORE_downstream f1 mo mn (APPEND_downstream f2 m I)) = folderset (APPEND_downstream f2 m (STORE_downstream f1 mo mn I))"
+    by (simp add: APPEND_downstream_def store_folderset)
+      
+  have "filesystem (STORE_downstream f1 mo mn (APPEND_downstream f2 m I)) = filesystem(APPEND_downstream f2 m (STORE_downstream f1 mo mn I))"
+    using O1pre O2pre freshmn freshmo unfolding STORE_downstream_def APPEND_downstream_def APPEND_atSource_def STORE_atSource_def replaceMsg_def
+      by (smt Diff_insert0 Un_Diff Un_Diff_cancel2 Un_insert_right empty_iff fun_upd_twist fun_upd_upd insert_iff insert_is_Un map_upd_Some_unfold option.case_eq_if option.collapse option.simps(5) snd_conv sup_bot.right_neutral)      
   thus ?thesis using A1 by (simp add: prod.expand)
 qed
       
@@ -459,8 +549,7 @@ fixes
   R :: "'a orset"
 assumes 
   O1pre: " APPEND_atSource f m I" and
-  O2pre: " R = DELETE_atSource e I" and
-	validS: "validState I"
+  O2pre: " R = DELETE_atSource e I"
 shows "APPEND_downstream f m (DELETE_downstream e R I) = DELETE_downstream e R (APPEND_downstream f m I)"
 proof -
   have A1: "folderset(APPEND_downstream f m (DELETE_downstream e R I)) = folderset(DELETE_downstream e R (APPEND_downstream f m I))"
@@ -468,6 +557,97 @@ proof -
   have "filesystem(APPEND_downstream f m (DELETE_downstream e R I)) = filesystem(DELETE_downstream e R (APPEND_downstream f m I))"
     using O1pre O2pre unfolding APPEND_atSource_def APPEND_downstream_def DELETE_atSource_def DELETE_downstream_def 
     by (simp add: fun_upd_twist option.case_eq_if)
+	thus ?thesis using A1 prod_eqI by blast
+qed
+  
+lemma commDELETE_EXPUNGE:
+fixes
+  I :: "('a, 'b) imap" and
+  f1 :: "'a" and
+  f2 :: "'a" and
+  m :: "'b" and
+  R :: "'a orset"
+assumes 
+  O1pre: " EXPUNGE_atSource f1 m I" and
+  O2pre: " R = DELETE_atSource f2 I"
+shows "EXPUNGE_downstream f1 m (DELETE_downstream f2 R I) = DELETE_downstream f2 R (EXPUNGE_downstream f1 m I)"
+proof -
+  have A1: "folderset(EXPUNGE_downstream f1 m (DELETE_downstream f2 R I)) = folderset (DELETE_downstream f2 R (EXPUNGE_downstream f1 m I))"
+    unfolding DELETE_downstream_def EXPUNGE_downstream_def by simp
+  have "filesystem(EXPUNGE_downstream f1 m (DELETE_downstream f2 R I)) = filesystem (DELETE_downstream f2 R (EXPUNGE_downstream f1 m I))"
+    using O1pre O2pre unfolding EXPUNGE_atSource_def EXPUNGE_downstream_def DELETE_atSource_def DELETE_downstream_def msgLookup_def      
+    by (simp add: fun_upd_twist option.case_eq_if)
+	thus ?thesis using A1 prod_eqI by blast
+qed
+  
+lemma commCREATE_EXPUNGE:
+fixes
+  I :: "('a, 'b) imap" and
+  f1 :: "'a" and
+  f2 :: "'a" and
+  m :: "'b" and
+  n :: nat
+assumes 
+  O1pre: " EXPUNGE_atSource f1 m I" and
+  O2pre: " CREATE_atSource f2 I"
+shows "EXPUNGE_downstream f1 m (CREATE_downstream f2 n I) = CREATE_downstream f2 n (EXPUNGE_downstream f1 m I)"
+proof -
+  have A1: "folderset (EXPUNGE_downstream f1 m (CREATE_downstream f2 n I)) = folderset (CREATE_downstream f2 n (EXPUNGE_downstream f1 m I))"
+    unfolding CREATE_downstream_def EXPUNGE_downstream_def by simp
+  have "filesystem (EXPUNGE_downstream f1 m (CREATE_downstream f2 n I)) = filesystem (CREATE_downstream f2 n (EXPUNGE_downstream f1 m I))"
+    using O1pre O2pre unfolding EXPUNGE_atSource_def EXPUNGE_downstream_def CREATE_atSource_def CREATE_downstream_def      
+    by (simp add: fun_upd_twist option.case_eq_if)
+	thus ?thesis using A1 prod_eqI by blast
+qed
+  
+lemma commAPPEND_EXPUNGE:
+fixes
+  I :: "('a, 'b) imap" and
+  f1 :: "'a" and
+  f2 :: "'a" and
+  m1 :: "'b" and
+  m2 :: "'b"
+assumes 
+  O1pre: "EXPUNGE_atSource f1 m1 I" and
+  O2pre: "APPEND_atSource f2 m2 I"
+shows "EXPUNGE_downstream f1 m1 (APPEND_downstream f2 m2 I) = APPEND_downstream f2 m2 (EXPUNGE_downstream f1 m1 I)"
+proof -
+  have A1: "folderset (EXPUNGE_downstream f1 m1 (APPEND_downstream f2 m2 I)) = folderset (APPEND_downstream f2 m2 (EXPUNGE_downstream f1 m1 I))"
+    unfolding EXPUNGE_downstream_def APPEND_downstream_def by simp
+  have "filesystem (EXPUNGE_downstream f1 m1 (APPEND_downstream f2 m2 I)) = filesystem (APPEND_downstream f2 m2 (EXPUNGE_downstream f1 m1 I))"
+    using O1pre O2pre unfolding EXPUNGE_downstream_def EXPUNGE_atSource_def APPEND_downstream_def APPEND_atSource_def
+    by (smt Diff_empty Diff_insert0 Un_Diff case_prod_beta' fun_upd_apply fun_upd_twist fun_upd_upd insert_Diff insert_Diff1 map_upd_eqD1 mk_disjoint_insert msgLookup_def option.case_eq_if option.collapse option.simps(3) singletonI snd_conv)
+	thus ?thesis using A1 prod_eqI by blast
+qed
+  
+lemma commSTORE_EXPUNGE:
+fixes
+  I :: "('a, 'b) imap" and
+  f1 :: "'a" and
+  f2 :: "'a" and
+  m :: "'b" and
+  mo :: "'b" and
+  mn :: "'b"
+assumes 
+  O1pre: "EXPUNGE_atSource f1 m1 I" and
+  O2pre: "STORE_atSource f2 mo mn I"
+shows "EXPUNGE_downstream f1 m1 (STORE_downstream f2 mo mn I) = STORE_downstream f2 mo mn (EXPUNGE_downstream f1 m1 I)"
+proof -
+  have A1: "folderset (EXPUNGE_downstream f1 m1 (STORE_downstream f2 mo mn I)) = folderset (STORE_downstream f2 mo mn (EXPUNGE_downstream f1 m1 I))"
+    unfolding EXPUNGE_downstream_def STORE_downstream_def by simp
+  have A2: "\<forall> f . f1 \<noteq> f2 \<longrightarrow> filesystem (EXPUNGE_downstream f1 m1 (STORE_downstream f2 mo mn I)) f = filesystem (STORE_downstream f2 mo mn (EXPUNGE_downstream f1 m1 I)) f"
+    using O1pre O2pre unfolding EXPUNGE_downstream_def EXPUNGE_atSource_def STORE_downstream_def STORE_atSource_def 
+    by (smt fun_upd_other fun_upd_twist option.case_eq_if snd_conv)
+  have A3: "\<forall> f . (f1 = f2 \<and> f \<noteq> f1) \<longrightarrow> filesystem (EXPUNGE_downstream f1 m1 (STORE_downstream f2 mo mn I)) f = filesystem (STORE_downstream f2 mo mn (EXPUNGE_downstream f1 m1 I)) f"
+    using O1pre O2pre unfolding EXPUNGE_downstream_def EXPUNGE_atSource_def STORE_downstream_def STORE_atSource_def 
+    by (smt fun_upd_other fun_upd_twist option.case_eq_if snd_conv)
+  have "f1 = f2 \<longrightarrow> filesystem (EXPUNGE_downstream f1 m1 (STORE_downstream f2 mo mn I)) f1 = filesystem (STORE_downstream f2 mo mn (EXPUNGE_downstream f1 m1 I)) f1"
+    using O1pre O2pre unfolding EXPUNGE_downstream_def EXPUNGE_atSource_def STORE_downstream_def STORE_atSource_def msgLookup_def replaceMsg_def 
+    by (smt Diff_empty Diff_insert Diff_insert0 Un_Diff empty_iff fun_upd_same insertE insert_commute map_upd_eqD1 option.case_eq_if option.collapse option.simps(3) snd_conv)
+
+  hence "filesystem (EXPUNGE_downstream f1 m1 (STORE_downstream f2 mo mn I)) = filesystem (STORE_downstream f2 mo mn (EXPUNGE_downstream f1 m1 I))"
+    using O1pre O2pre A2 A3 unfolding EXPUNGE_downstream_def EXPUNGE_atSource_def STORE_downstream_def STORE_atSource_def by fastforce      
+      
 	thus ?thesis using A1 prod_eqI by blast
 qed
   
