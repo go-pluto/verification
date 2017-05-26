@@ -26,10 +26,10 @@ where
 
 
 definition validState ::
-    "('a,'b) imap \<Rightarrow> bool"
+    "('a, 'b) imap \<Rightarrow> bool"
 where
-    "validState I = ((\<forall> (a,_) \<in> folderset I . (filesystem I) a \<noteq> None)
-    \<and> (\<forall> f . (filesystem I) f \<noteq> None \<longrightarrow> (\<exists> (a,_) \<in> folderset I . a = f)))"
+    "validState I = ((\<forall> (a, _) \<in> folderset I . (filesystem I) a \<noteq> None)
+    \<and> (\<forall> f . (filesystem I) f \<noteq> None \<longrightarrow> (\<exists> (a, _) \<in> folderset I . a = f)))"
 
 
 definition replaceMsg ::
@@ -41,9 +41,11 @@ where
 definition msgLookup ::
     "'a \<Rightarrow> 'b \<Rightarrow> ('a, 'b) imap \<Rightarrow> bool"
 where
-    "msgLookup f msg I = (case (filesystem I)(f) of
-    None \<Rightarrow> False |
-    Some msgset \<Rightarrow> msg \<in> msgset)"
+    "msgLookup f msg I = (
+    case (filesystem I)(f) of
+        None \<Rightarrow> False |
+        Some msgset \<Rightarrow> msg \<in> msgset
+    )"
 
 
 
@@ -55,7 +57,7 @@ where
 definition CREATE_atSource ::
     "'a \<Rightarrow> ('a, 'b) imap \<Rightarrow> bool"
 where
-    "CREATE_atSource f I = (\<nexists> n . (f,n) \<in> folderset I)"
+    "CREATE_atSource f I = (\<nexists> n . (f, n) \<in> folderset I)"
 
 definition CREATE_downstream ::
     "'a \<Rightarrow> nat \<Rightarrow> ('a, 'b) imap \<Rightarrow> ('a, 'b) imap"
@@ -72,7 +74,7 @@ where
 definition DELETE_atSource_pre ::
     "'a \<Rightarrow> ('a, 'b) imap \<Rightarrow> bool"
 where
-    "DELETE_atSource_pre e I = (\<exists> (a,_) \<in> folderset I . a = e)"
+    "DELETE_atSource_pre e I = (\<exists> (a, _) \<in> folderset I . a = e)"
 
 definition DELETE_downstream ::
     "'a \<Rightarrow> 'a orset \<Rightarrow> ('a, 'b) imap \<Rightarrow> ('a, 'b) imap"
@@ -83,7 +85,7 @@ where
 definition APPEND_atSource ::
     "'a \<Rightarrow> 'b \<Rightarrow> ('a, 'b) imap \<Rightarrow> bool"
 where
-    "APPEND_atSource f m I = (\<exists> (a,_) \<in> folderset I . a = f \<and> \<not> msgLookup f m I)"
+    "APPEND_atSource f m I = (\<exists> (a, _) \<in> folderset I . a = f \<and> \<not> msgLookup f m I)"
 
 definition APPEND_downstream ::
     "'a \<Rightarrow> 'b \<Rightarrow> ('a, 'b) imap \<Rightarrow> ('a, 'b) imap"
@@ -99,7 +101,7 @@ where
 definition STORE_atSource ::
     "'a \<Rightarrow> 'b \<Rightarrow> 'b \<Rightarrow> ('a, 'b) imap \<Rightarrow> bool"
 where
-    "STORE_atSource f msgold msgnew I = ((\<exists> (a,_) \<in> folderset I . a = f) \<and> msgLookup f msgold I \<and> \<not>(msgLookup f msgnew I))"
+    "STORE_atSource f msgold msgnew I = ((\<exists> (a, _) \<in> folderset I . a = f) \<and> msgLookup f msgold I \<and> \<not>(msgLookup f msgnew I))"
 
 definition STORE_downstream ::
     "'a \<Rightarrow> 'b \<Rightarrow> 'b \<Rightarrow> ('a, 'b) imap \<Rightarrow> ('a, 'b) imap"
@@ -115,7 +117,7 @@ where
 definition EXPUNGE_atSource ::
     "'a \<Rightarrow> 'b \<Rightarrow> ('a, 'b) imap \<Rightarrow> bool"
 where
-    "EXPUNGE_atSource f m I = ((\<exists> (a,_) \<in> folderset I . a = f) \<and> msgLookup f m I)"
+    "EXPUNGE_atSource f m I = ((\<exists> (a, _) \<in> folderset I . a = f) \<and> msgLookup f m I)"
 
 definition EXPUNGE_downstream ::
     "'a \<Rightarrow> 'b \<Rightarrow> ('a, 'b) imap \<Rightarrow> ('a, 'b) imap"
@@ -144,8 +146,15 @@ assumes
     validS: "validState I"
 shows "filesystem (APPEND_downstream f1 m1 I) f1 \<noteq> None"
 proof -
-    have "filesystem I f1 \<noteq> None" using O1pre validS unfolding validState_def APPEND_atSource_def by auto
-    thus ?thesis using validS O1pre unfolding APPEND_downstream_def validState_def APPEND_atSource_def by auto
+    have "filesystem I f1 \<noteq> None"
+    using O1pre validS
+    unfolding validState_def APPEND_atSource_def
+    by auto
+
+    thus ?thesis
+    using validS O1pre
+    unfolding APPEND_downstream_def validState_def APPEND_atSource_def
+    by auto
 qed
 
 
@@ -156,7 +165,9 @@ fixes
     m :: "'b"
 shows "folderset (APPEND_downstream f m I) = folderset I"
 proof -
-    show ?thesis unfolding APPEND_downstream_def by auto
+    show ?thesis
+    unfolding APPEND_downstream_def
+    by auto
 qed
 
 
@@ -169,7 +180,9 @@ assumes
     O1pre: " APPEND_atSource f1 m1 I" and
     validS: "validState I"
 shows "\<forall> f . f \<noteq> f1 \<longrightarrow> filesystem (APPEND_downstream f1 m1 I) f = filesystem I f"
-proof (simp add: APPEND_downstream_def option.case_eq_if)
+proof -
+    show ?thesis
+    by (simp add: APPEND_downstream_def option.case_eq_if)
 qed
 
 
@@ -179,7 +192,9 @@ fixes
     f :: "'a"
 shows "folderset (STORE_downstream f msgold msgnew I) = folderset I"
 proof -
-    show ?thesis unfolding STORE_downstream_def by auto
+    show ?thesis
+    unfolding STORE_downstream_def
+    by auto
 qed
 
 
@@ -189,7 +204,9 @@ fixes
     f1 :: "'a"
 shows "\<forall> f. f \<noteq> f1 \<longrightarrow> filesystem (STORE_downstream f1 msgold msgnew I) f = filesystem I f"
 proof -
-    show ?thesis unfolding STORE_downstream_def by (simp add: option.case_eq_if)
+    show ?thesis
+    unfolding STORE_downstream_def
+    by (simp add: option.case_eq_if)
 qed
 
 
@@ -203,7 +220,8 @@ assumes
     pre: "STORE_atSource f1 msgold msgnew I"
 shows "filesystem (STORE_downstream f1 msgold msgnew I) f1 \<noteq> None"
 proof -
-    show ?thesis using pre unfolding STORE_downstream_def STORE_atSource_def msgLookup_def
+    show ?thesis
+    using pre unfolding STORE_downstream_def STORE_atSource_def msgLookup_def
     by (metis fun_upd_same option.case_eq_if option.simps(3) snd_conv)
 qed
 
@@ -223,7 +241,10 @@ assumes
     validS: "validState I"
 shows "validState (CREATE_downstream e n I)"
 proof -
-    show ?thesis using validS unfolding CREATE_downstream_def add_def validState_def CREATE_atSource_def apply simp
+    show ?thesis
+    using validS
+    unfolding CREATE_downstream_def add_def validState_def CREATE_atSource_def
+    apply simp
     by (simp add: split_def)
 qed
 
@@ -238,14 +259,25 @@ assumes
     validS: "validState I"
 shows "validState (DELETE_downstream e1 R I)"
 proof -
-    have A1: "\<forall> (a,b) \<in> folderset I. a \<noteq> e1 \<longrightarrow> (a,b) \<in> folderset (DELETE_downstream e1 R I)"
-    using O1pre unfolding DELETE_downstream_def remove_downstream_def DELETE_atSource_def remove_atSource_def by auto
-    have "\<forall> (a,_) \<in> folderset (DELETE_downstream e1 R I). a \<noteq> e1" using O1pre
-    unfolding DELETE_downstream_def remove_downstream_def DELETE_atSource_def remove_atSource_def by auto
-    hence "(\<forall> (a,_) \<in> folderset (DELETE_downstream e1 R I) . (filesystem (DELETE_downstream e1 R I)) a \<noteq> None)" using validS
-    unfolding validState_def  DELETE_downstream_def remove_downstream_def DELETE_atSource_def remove_atSource_def by fastforce
-    thus ?thesis using validS A1 unfolding validState_def DELETE_atSource_def DELETE_downstream_def remove_atSource_def
-    remove_downstream_def apply simp by blast
+    have A1: "\<forall> (a, b) \<in> folderset I. a \<noteq> e1 \<longrightarrow> (a, b) \<in> folderset (DELETE_downstream e1 R I)"
+    using O1pre
+    unfolding DELETE_downstream_def remove_downstream_def DELETE_atSource_def remove_atSource_def
+    by auto
+
+    have "\<forall> (a, _) \<in> folderset (DELETE_downstream e1 R I). a \<noteq> e1"
+    using O1pre
+    unfolding DELETE_downstream_def remove_downstream_def DELETE_atSource_def remove_atSource_def
+    by auto
+
+    hence "(\<forall> (a, _) \<in> folderset (DELETE_downstream e1 R I) . (filesystem (DELETE_downstream e1 R I)) a \<noteq> None)" using validS
+    unfolding validState_def DELETE_downstream_def remove_downstream_def DELETE_atSource_def remove_atSource_def
+    by fastforce
+
+    thus ?thesis
+    using validS A1
+    unfolding validState_def DELETE_atSource_def DELETE_downstream_def remove_atSource_def remove_downstream_def
+    apply simp
+    by blast
 qed
 
 
@@ -259,10 +291,18 @@ assumes
     validS: "validState I"
 shows "validState (APPEND_downstream f1 m1 I)"
 proof -
-    have "folderset (APPEND_downstream f1 m1 I) = folderset I" unfolding APPEND_downstream_def by auto
-    hence "(\<forall>f. filesystem (APPEND_downstream f1 m1 I) f \<noteq> None \<longrightarrow> (\<exists>(a,_)\<in>folderset (APPEND_downstream f1 m1 I). a = f))"
-    using O1pre by (metis (no_types, lifting) APPEND_atSource_def append_filesystem case_prod_beta' validS validState_def)
-    thus ?thesis using O1pre validS unfolding validState_def APPEND_downstream_def apply simp
+    have "folderset (APPEND_downstream f1 m1 I) = folderset I"
+    unfolding APPEND_downstream_def
+    by auto
+
+    hence "(\<forall>f. filesystem (APPEND_downstream f1 m1 I) f \<noteq> None \<longrightarrow> (\<exists> (a, _) \<in>folderset (APPEND_downstream f1 m1 I). a = f))"
+    using O1pre
+    by (metis (no_types, lifting) APPEND_atSource_def append_filesystem case_prod_beta' validS validState_def)
+
+    thus ?thesis
+    using O1pre validS
+    unfolding validState_def APPEND_downstream_def
+    apply simp
     by (smt case_prodE fun_upd_apply old.prod.case option.case_eq_if)
 qed
 
@@ -278,7 +318,9 @@ assumes
     validS: "validState I"
 shows "validState (STORE_downstream f msgold msgnew I)"
 proof -
-    show ?thesis using O1pre validS unfolding STORE_downstream_def STORE_atSource_def msgLookup_def replaceMsg_def
+    show ?thesis
+    using O1pre validS
+    unfolding STORE_downstream_def STORE_atSource_def msgLookup_def replaceMsg_def
     by (simp add: case_prod_beta' fun_upd_same option.case_eq_if validState_def)
 qed
 
@@ -293,7 +335,9 @@ assumes
     validS: "validState I"
 shows "validState (EXPUNGE_downstream f m I)"
 proof -
-    show ?thesis using O1pre validS unfolding EXPUNGE_atSource_def EXPUNGE_downstream_def msgLookup_def validState_def
+    show ?thesis
+    using O1pre validS
+    unfolding EXPUNGE_atSource_def EXPUNGE_downstream_def msgLookup_def validState_def
     by (simp add: case_prod_beta' option.case_eq_if)
 qed
 
@@ -318,9 +362,9 @@ qed
 
 
 -- "Case 1"
-lemma commCREATE:
+lemma commCREATE_CREATE:
 fixes
-    I :: "('a,'b) imap" and
+    I :: "('a, 'b) imap" and
     e1 :: "'a" and
     e2 :: "'a" and
     n1 :: nat and
@@ -329,7 +373,10 @@ assumes
     n1neqn2: "n1 \<noteq> n2"
 shows "CREATE_downstream e1 n1 (CREATE_downstream e2 n2 I) = CREATE_downstream e2 n2 (CREATE_downstream e1 n1 I)"
 proof -
-    show ?thesis unfolding CREATE_downstream_def using commAdd n1neqn2 by fastforce
+    show ?thesis
+    unfolding CREATE_downstream_def
+    using commAdd n1neqn2
+    by fastforce
 qed
 
 
@@ -348,11 +395,20 @@ assumes
     lookupe1: "lookup e1 (folderset I)"
 shows "DELETE_downstream e1 R1 (CREATE_downstream e2 n I) = CREATE_downstream e2 n (DELETE_downstream e1 R1 I)"
 proof -
-    have fset: "folderset (DELETE_downstream e1 R1 (CREATE_downstream e2 n I)) = folderset (CREATE_downstream e2 n (DELETE_downstream e1 R1 I))" using O1R1 freshn unfolding DELETE_downstream_def CREATE_downstream_def fresh_def commAddRemove DELETE_atSource_def remove_atSource_def remove_downstream_def add_def by auto
+    have fset: "folderset (DELETE_downstream e1 R1 (CREATE_downstream e2 n I)) = folderset (CREATE_downstream e2 n (DELETE_downstream e1 R1 I))"
+    using O1R1 freshn
+    unfolding DELETE_downstream_def CREATE_downstream_def fresh_def commAddRemove DELETE_atSource_def remove_atSource_def remove_downstream_def add_def
+    by auto
 
-    have "filesystem (DELETE_downstream e1 R1 (CREATE_downstream e2 n I)) = filesystem (CREATE_downstream e2 n (DELETE_downstream e1 R1 I))" using O1R1 O2pre lookupe1 unfolding DELETE_downstream_def CREATE_downstream_def DELETE_atSource_def remove_atSource_def CREATE_atSource_def validState_def lookup_def by fastforce
+    have "filesystem (DELETE_downstream e1 R1 (CREATE_downstream e2 n I)) = filesystem (CREATE_downstream e2 n (DELETE_downstream e1 R1 I))"
+    using O1R1 O2pre lookupe1
+    unfolding DELETE_downstream_def CREATE_downstream_def DELETE_atSource_def remove_atSource_def CREATE_atSource_def validState_def lookup_def
+    by fastforce
 
-    thus ?thesis using fset unfolding DELETE_downstream_def by auto
+    thus ?thesis
+    using fset
+    unfolding DELETE_downstream_def
+    by auto
 qed
 
 
@@ -369,9 +425,15 @@ assumes
     O2pre: " CREATE_atSource e I"
 shows "APPEND_downstream f m (CREATE_downstream e n I) = CREATE_downstream e n (APPEND_downstream f m I)"
 proof -
-    have "filesystem(APPEND_downstream f m (CREATE_downstream e n I)) = filesystem(CREATE_downstream e n (APPEND_downstream f m I))" using O1pre O2pre unfolding APPEND_atSource_def APPEND_downstream_def CREATE_atSource_def CREATE_downstream_def by (smt case_prodE fun_upd_apply fun_upd_twist option.case_eq_if prod.sel(2))
+    have "filesystem(APPEND_downstream f m (CREATE_downstream e n I)) = filesystem(CREATE_downstream e n (APPEND_downstream f m I))"
+    using O1pre O2pre
+    unfolding APPEND_atSource_def APPEND_downstream_def CREATE_atSource_def CREATE_downstream_def
+    by (smt case_prodE fun_upd_apply fun_upd_twist option.case_eq_if prod.sel(2))
 
-    thus ?thesis using append_folderset[of f m I] unfolding APPEND_downstream_def CREATE_downstream_def by auto
+    thus ?thesis
+    using append_folderset[of f m I]
+    unfolding APPEND_downstream_def CREATE_downstream_def
+    by auto
 qed
 
 
@@ -389,11 +451,17 @@ assumes
     O2pre: " CREATE_atSource f2 I"
 shows "STORE_downstream f1 mo mn (CREATE_downstream f2 n I) = CREATE_downstream f2 n (STORE_downstream f1 mo mn I)"
 proof -
-    have A1: "folderset (STORE_downstream f1 mo mn (CREATE_downstream f2 n I)) = folderset (CREATE_downstream f2 n (STORE_downstream f1 mo mn I))" by (simp add: CREATE_downstream_def store_folderset)
+    have A1: "folderset (STORE_downstream f1 mo mn (CREATE_downstream f2 n I)) = folderset (CREATE_downstream f2 n (STORE_downstream f1 mo mn I))"
+    by (simp add: CREATE_downstream_def store_folderset)
 
-    have "filesystem (STORE_downstream f1 mo mn (CREATE_downstream f2 n I)) = filesystem (CREATE_downstream f2 n (STORE_downstream f1 mo mn I))" using O1pre O2pre unfolding STORE_downstream_def CREATE_downstream_def CREATE_atSource_def STORE_atSource_def by (smt case_prodE fun_upd_other fun_upd_twist option.case_eq_if snd_conv)
+    have "filesystem (STORE_downstream f1 mo mn (CREATE_downstream f2 n I)) = filesystem (CREATE_downstream f2 n (STORE_downstream f1 mo mn I))"
+    using O1pre O2pre
+    unfolding STORE_downstream_def CREATE_downstream_def CREATE_atSource_def STORE_atSource_def
+    by (smt case_prodE fun_upd_other fun_upd_twist option.case_eq_if snd_conv)
 
-    thus ?thesis using A1 by (simp add: prod.expand)
+    thus ?thesis
+    using A1
+    by (simp add: prod.expand)
 qed
 
 
@@ -410,16 +478,23 @@ assumes
     O2pre: " CREATE_atSource f2 I"
 shows "EXPUNGE_downstream f1 m (CREATE_downstream f2 n I) = CREATE_downstream f2 n (EXPUNGE_downstream f1 m I)"
 proof -
-    have A1: "folderset (EXPUNGE_downstream f1 m (CREATE_downstream f2 n I)) = folderset (CREATE_downstream f2 n (EXPUNGE_downstream f1 m I))" unfolding CREATE_downstream_def EXPUNGE_downstream_def by simp
+    have A1: "folderset (EXPUNGE_downstream f1 m (CREATE_downstream f2 n I)) = folderset (CREATE_downstream f2 n (EXPUNGE_downstream f1 m I))"
+    unfolding CREATE_downstream_def EXPUNGE_downstream_def
+    by simp
 
-    have "filesystem (EXPUNGE_downstream f1 m (CREATE_downstream f2 n I)) = filesystem (CREATE_downstream f2 n (EXPUNGE_downstream f1 m I))" using O1pre O2pre unfolding EXPUNGE_atSource_def EXPUNGE_downstream_def CREATE_atSource_def CREATE_downstream_def by (simp add: fun_upd_twist option.case_eq_if)
+    have "filesystem (EXPUNGE_downstream f1 m (CREATE_downstream f2 n I)) = filesystem (CREATE_downstream f2 n (EXPUNGE_downstream f1 m I))"
+    using O1pre O2pre
+    unfolding EXPUNGE_atSource_def EXPUNGE_downstream_def CREATE_atSource_def CREATE_downstream_def
+    by (simp add: fun_upd_twist option.case_eq_if)
 
-    thus ?thesis using A1 prod_eqI by blast
+    thus ?thesis
+    using A1 prod_eqI
+    by blast
 qed
 
 
 -- "Case 6"
-lemma commDELETE:
+lemma commDELETE_DELETE:
 fixes
     I :: "('a, 'b) imap" and
     R1 :: "'a orset" and
@@ -436,13 +511,20 @@ proof -
         assume a1: "R1 = {(a, b). (a, b) \<in> folderset I \<and> a = e1}"
         assume a2: "R2 = {(a, b). (a, b) \<in> folderset I \<and> a = e2}"
 
-        have f3: "\<forall>P a Pa Pb aa. (P \<noteq> remove_atSource (a::'a) Pa \<or> Pb \<noteq> remove_atSource aa Pa) \<or> remove_downstream Pb (remove_downstream P Pa) = remove_downstream P (remove_downstream Pb Pa)" by (meson commRemove)
+        have f3: "\<forall>P a Pa Pb aa. (P \<noteq> remove_atSource (a::'a) Pa \<or> Pb \<noteq> remove_atSource aa Pa) \<or> remove_downstream Pb (remove_downstream P Pa) = remove_downstream P (remove_downstream Pb Pa)"
+        by (meson commRemove)
 
-        have f4: "{(a, n). (a, n) \<in> folderset I \<and> a = e1} = remove_atSource e1 (folderset I)" using a1 by (simp add: DELETE_atSource_def O1R1)
+        have f4: "{(a, n). (a, n) \<in> folderset I \<and> a = e1} = remove_atSource e1 (folderset I)"
+        using a1
+        by (simp add: DELETE_atSource_def O1R1)
 
-        have "{(a, n). (a, n) \<in> folderset I \<and> a = e2} = remove_atSource e2 (folderset I)" using a2 by (simp add: DELETE_atSource_def O2R2)
+        have "{(a, n). (a, n) \<in> folderset I \<and> a = e2} = remove_atSource e2 (folderset I)"
+        using a2
+        by (simp add: DELETE_atSource_def O2R2)
 
-        then show "remove_downstream {(a, n). (a, n) \<in> folderset I \<and> a = e2} (remove_downstream {(a, n). (a, n) \<in> folderset I \<and> a = e1} (folderset I)) = remove_downstream {(a, n). (a, n) \<in> folderset I \<and> a = e1} (remove_downstream {(a, n). (a, n) \<in> folderset I \<and> a = e2} (folderset I)) \<and> (filesystem I)(e1 := None, e2 := None) = (filesystem I) (e2 := None, e1 := None)" using f4 f3 by auto
+        then show "remove_downstream {(a, n). (a, n) \<in> folderset I \<and> a = e2} (remove_downstream {(a, n). (a, n) \<in> folderset I \<and> a = e1} (folderset I)) = remove_downstream {(a, n). (a, n) \<in> folderset I \<and> a = e1} (remove_downstream {(a, n). (a, n) \<in> folderset I \<and> a = e2} (folderset I)) \<and> (filesystem I)(e1 := None, e2 := None) = (filesystem I) (e2 := None, e1 := None)"
+        using f4 f3
+        by auto
     qed
 qed
 
@@ -460,11 +542,18 @@ assumes
     O2pre: " R = DELETE_atSource e I"
 shows "APPEND_downstream f m (DELETE_downstream e R I) = DELETE_downstream e R (APPEND_downstream f m I)"
 proof -
-    have A1: "folderset(APPEND_downstream f m (DELETE_downstream e R I)) = folderset(DELETE_downstream e R (APPEND_downstream f m I))" unfolding DELETE_downstream_def by (simp add: append_folderset)
+    have A1: "folderset(APPEND_downstream f m (DELETE_downstream e R I)) = folderset(DELETE_downstream e R (APPEND_downstream f m I))"
+    unfolding DELETE_downstream_def
+    by (simp add: append_folderset)
 
-    have "filesystem(APPEND_downstream f m (DELETE_downstream e R I)) = filesystem(DELETE_downstream e R (APPEND_downstream f m I))" using O1pre O2pre unfolding APPEND_atSource_def APPEND_downstream_def DELETE_atSource_def DELETE_downstream_def by (simp add: fun_upd_twist option.case_eq_if)
+    have "filesystem(APPEND_downstream f m (DELETE_downstream e R I)) = filesystem(DELETE_downstream e R (APPEND_downstream f m I))"
+    using O1pre O2pre
+    unfolding APPEND_atSource_def APPEND_downstream_def DELETE_atSource_def DELETE_downstream_def
+    by (simp add: fun_upd_twist option.case_eq_if)
 
-    thus ?thesis using A1 prod_eqI by blast
+    thus ?thesis
+    using A1 prod_eqI
+    by blast
 qed
 
 
@@ -482,11 +571,17 @@ assumes
     O2pre: " R = DELETE_atSource f2 I"
 shows "STORE_downstream f1 mo mn (DELETE_downstream f2 R I) = DELETE_downstream f2 R (STORE_downstream f1 mo mn I)"
 proof -
-    have A1: "folderset (STORE_downstream f1 mo mn (DELETE_downstream f2 R I)) = folderset(DELETE_downstream f2 R (STORE_downstream f1 mo mn I))" by (simp add: DELETE_downstream_def store_folderset)
+    have A1: "folderset (STORE_downstream f1 mo mn (DELETE_downstream f2 R I)) = folderset(DELETE_downstream f2 R (STORE_downstream f1 mo mn I))"
+    by (simp add: DELETE_downstream_def store_folderset)
 
-    have "filesystem (STORE_downstream f1 mo mn (DELETE_downstream f2 R I)) = filesystem(DELETE_downstream f2 R (STORE_downstream f1 mo mn I))" using O1pre O2pre unfolding STORE_downstream_def DELETE_downstream_def DELETE_atSource_def STORE_atSource_def by (simp add: fun_upd_twist option.case_eq_if)
+    have "filesystem (STORE_downstream f1 mo mn (DELETE_downstream f2 R I)) = filesystem(DELETE_downstream f2 R (STORE_downstream f1 mo mn I))"
+    using O1pre O2pre
+    unfolding STORE_downstream_def DELETE_downstream_def DELETE_atSource_def STORE_atSource_def
+    by (simp add: fun_upd_twist option.case_eq_if)
 
-    thus ?thesis using A1 by (simp add: prod.expand)
+    thus ?thesis
+    using A1
+    by (simp add: prod.expand)
 qed
 
 
@@ -503,16 +598,23 @@ assumes
     O2pre: " R = DELETE_atSource f2 I"
 shows "EXPUNGE_downstream f1 m (DELETE_downstream f2 R I) = DELETE_downstream f2 R (EXPUNGE_downstream f1 m I)"
 proof -
-    have A1: "folderset(EXPUNGE_downstream f1 m (DELETE_downstream f2 R I)) = folderset (DELETE_downstream f2 R (EXPUNGE_downstream f1 m I))" unfolding DELETE_downstream_def EXPUNGE_downstream_def by simp
+    have A1: "folderset(EXPUNGE_downstream f1 m (DELETE_downstream f2 R I)) = folderset (DELETE_downstream f2 R (EXPUNGE_downstream f1 m I))"
+    unfolding DELETE_downstream_def EXPUNGE_downstream_def
+    by simp
 
-    have "filesystem(EXPUNGE_downstream f1 m (DELETE_downstream f2 R I)) = filesystem (DELETE_downstream f2 R (EXPUNGE_downstream f1 m I))" using O1pre O2pre unfolding EXPUNGE_atSource_def EXPUNGE_downstream_def DELETE_atSource_def DELETE_downstream_def msgLookup_def by (simp add: fun_upd_twist option.case_eq_if)
+    have "filesystem(EXPUNGE_downstream f1 m (DELETE_downstream f2 R I)) = filesystem (DELETE_downstream f2 R (EXPUNGE_downstream f1 m I))"
+    using O1pre O2pre
+    unfolding EXPUNGE_atSource_def EXPUNGE_downstream_def DELETE_atSource_def DELETE_downstream_def msgLookup_def
+    by (simp add: fun_upd_twist option.case_eq_if)
 
-    thus ?thesis using A1 prod_eqI by blast
+    thus ?thesis
+    using A1 prod_eqI
+    by blast
 qed
 
 
 -- "Case 10"
-lemma commAPPEND:
+lemma commAPPEND_APPEND:
 fixes
     I :: "('a, 'b) imap" and
     f1 :: "'a" and
@@ -525,11 +627,17 @@ assumes
     freshm: "m1 \<noteq> m2"
 shows "APPEND_downstream f1 m1 (APPEND_downstream f2 m2 I) = APPEND_downstream f2 m2 (APPEND_downstream f1 m1 I)"
 proof -
-    have A1: "folderset(APPEND_downstream f1 m1 (APPEND_downstream f2 m2 I)) = folderset(APPEND_downstream f2 m2 (APPEND_downstream f1 m1 I))" by (simp add: APPEND_downstream_def)
+    have A1: "folderset(APPEND_downstream f1 m1 (APPEND_downstream f2 m2 I)) = folderset(APPEND_downstream f2 m2 (APPEND_downstream f1 m1 I))"
+    by (simp add: APPEND_downstream_def)
 
-    have "filesystem(APPEND_downstream f1 m1 (APPEND_downstream f2 m2 I)) = filesystem(APPEND_downstream f2 m2 (APPEND_downstream f1 m1 I))" using O1pre O2pre freshm  unfolding APPEND_downstream_def APPEND_atSource_def msgLookup_def by (smt Un_insert_right fun_upd_twist fun_upd_upd insert_commute map_upd_Some_unfold option.case_eq_if option.collapse option.simps(3) snd_conv sup_bot.right_neutral)
+    have "filesystem(APPEND_downstream f1 m1 (APPEND_downstream f2 m2 I)) = filesystem(APPEND_downstream f2 m2 (APPEND_downstream f1 m1 I))"
+    using O1pre O2pre freshm
+    unfolding APPEND_downstream_def APPEND_atSource_def msgLookup_def
+    by (smt Un_insert_right fun_upd_twist fun_upd_upd insert_commute map_upd_Some_unfold option.case_eq_if option.collapse option.simps(3) snd_conv sup_bot.right_neutral)
 
-    thus ?thesis using A1 by (simp add: prod_eq_iff)
+    thus ?thesis
+    using A1
+    by (simp add: prod_eq_iff)
 qed
 
 
@@ -549,11 +657,17 @@ assumes
     freshmo: "m \<noteq> mo"
 shows "STORE_downstream f1 mo mn (APPEND_downstream f2 m I) = APPEND_downstream f2 m (STORE_downstream f1 mo mn I)"
 proof -
-    have A1: "folderset (STORE_downstream f1 mo mn (APPEND_downstream f2 m I)) = folderset (APPEND_downstream f2 m (STORE_downstream f1 mo mn I))" by (simp add: APPEND_downstream_def store_folderset)
+    have A1: "folderset (STORE_downstream f1 mo mn (APPEND_downstream f2 m I)) = folderset (APPEND_downstream f2 m (STORE_downstream f1 mo mn I))"
+    by (simp add: APPEND_downstream_def store_folderset)
 
-    have "filesystem (STORE_downstream f1 mo mn (APPEND_downstream f2 m I)) = filesystem(APPEND_downstream f2 m (STORE_downstream f1 mo mn I))" using O1pre O2pre freshmn freshmo unfolding STORE_downstream_def APPEND_downstream_def APPEND_atSource_def STORE_atSource_def replaceMsg_def by (smt Diff_insert0 Un_Diff Un_Diff_cancel2 Un_insert_right empty_iff fun_upd_twist fun_upd_upd insert_iff insert_is_Un map_upd_Some_unfold option.case_eq_if option.collapse option.simps(5) snd_conv sup_bot.right_neutral)
+    have "filesystem (STORE_downstream f1 mo mn (APPEND_downstream f2 m I)) = filesystem(APPEND_downstream f2 m (STORE_downstream f1 mo mn I))"
+    using O1pre O2pre freshmn freshmo
+    unfolding STORE_downstream_def APPEND_downstream_def APPEND_atSource_def STORE_atSource_def replaceMsg_def
+    by (smt Diff_insert0 Un_Diff Un_Diff_cancel2 Un_insert_right empty_iff fun_upd_twist fun_upd_upd insert_iff insert_is_Un map_upd_Some_unfold option.case_eq_if option.collapse option.simps(5) snd_conv sup_bot.right_neutral)
 
-    thus ?thesis using A1 by (simp add: prod.expand)
+    thus ?thesis
+    using A1
+    by (simp add: prod.expand)
 qed
 
 
@@ -570,16 +684,23 @@ assumes
     O2pre: "APPEND_atSource f2 m2 I"
 shows "EXPUNGE_downstream f1 m1 (APPEND_downstream f2 m2 I) = APPEND_downstream f2 m2 (EXPUNGE_downstream f1 m1 I)"
 proof -
-    have A1: "folderset (EXPUNGE_downstream f1 m1 (APPEND_downstream f2 m2 I)) = folderset (APPEND_downstream f2 m2 (EXPUNGE_downstream f1 m1 I))" unfolding EXPUNGE_downstream_def APPEND_downstream_def by simp
+    have A1: "folderset (EXPUNGE_downstream f1 m1 (APPEND_downstream f2 m2 I)) = folderset (APPEND_downstream f2 m2 (EXPUNGE_downstream f1 m1 I))"
+    unfolding EXPUNGE_downstream_def APPEND_downstream_def
+    by simp
 
-    have "filesystem (EXPUNGE_downstream f1 m1 (APPEND_downstream f2 m2 I)) = filesystem (APPEND_downstream f2 m2 (EXPUNGE_downstream f1 m1 I))" using O1pre O2pre unfolding EXPUNGE_downstream_def EXPUNGE_atSource_def APPEND_downstream_def APPEND_atSource_def by (smt Diff_empty Diff_insert0 Un_Diff case_prod_beta' fun_upd_apply fun_upd_twist fun_upd_upd insert_Diff insert_Diff1 map_upd_eqD1 mk_disjoint_insert msgLookup_def option.case_eq_if option.collapse option.simps(3) singletonI snd_conv)
+    have "filesystem (EXPUNGE_downstream f1 m1 (APPEND_downstream f2 m2 I)) = filesystem (APPEND_downstream f2 m2 (EXPUNGE_downstream f1 m1 I))"
+    using O1pre O2pre
+    unfolding EXPUNGE_downstream_def EXPUNGE_atSource_def APPEND_downstream_def APPEND_atSource_def
+    by (smt Diff_empty Diff_insert0 Un_Diff case_prod_beta' fun_upd_apply fun_upd_twist fun_upd_upd insert_Diff insert_Diff1 map_upd_eqD1 mk_disjoint_insert msgLookup_def option.case_eq_if option.collapse option.simps(3) singletonI snd_conv)
 
-    thus ?thesis using A1 prod_eqI by blast
+    thus ?thesis
+    using A1 prod_eqI
+    by blast
 qed
 
 
 -- "Case 13"
-lemma commSTORE:
+lemma commSTORE_STORE:
 fixes
     I :: "('a, 'b) imap" and
     f1 :: "'a" and
@@ -593,44 +714,90 @@ assumes
     O2pre: " STORE_atSource f2 mo2 mn2 I"
 shows "STORE_downstream f1 mo1 mn1 (STORE_downstream f2 mo2 mn2 I) = STORE_downstream f2 mo2 mn2 (STORE_downstream f1 mo1 mn1 I)"
 proof -
-    have A1: "folderset (STORE_downstream f1 mo1 mn1 (STORE_downstream f2 mo2 mn2 I)) = folderset(STORE_downstream f2 mo2 mn2 (STORE_downstream f1 mo1 mn1 I))" by (simp add: store_folderset)
+    have A1: "folderset (STORE_downstream f1 mo1 mn1 (STORE_downstream f2 mo2 mn2 I)) = folderset(STORE_downstream f2 mo2 mn2 (STORE_downstream f1 mo1 mn1 I))"
+    by (simp add: store_folderset)
 
-    have A5: "\<forall> f . f1 \<noteq> f2 \<longrightarrow> filesystem (STORE_downstream f1 mo1 mn1 (STORE_downstream f2 mo2 mn2 I)) f = filesystem(STORE_downstream f2 mo2 mn2 (STORE_downstream f1 mo1 mn1 I)) f" by (smt STORE_downstream_def fun_upd_twist option.case_eq_if snd_conv store_filesystem)
+    have A2: "\<forall> f . f1 \<noteq> f2 \<longrightarrow> filesystem (STORE_downstream f1 mo1 mn1 (STORE_downstream f2 mo2 mn2 I)) f = filesystem(STORE_downstream f2 mo2 mn2 (STORE_downstream f1 mo1 mn1 I)) f"
+    by (smt STORE_downstream_def fun_upd_twist option.case_eq_if snd_conv store_filesystem)
 
     have "f1 = f2 \<longrightarrow> filesystem (STORE_downstream f1 mo1 mn1 (STORE_downstream f2 mo2 mn2 I)) f1 = filesystem(STORE_downstream f2 mo2 mn2 (STORE_downstream f1 mo1 mn1 I)) f1"
     proof auto
         assume Ass: "f1 = f2"
-        hence "filesystem (STORE_downstream f1 mo1 mn1 (STORE_downstream f2 mo2 mn2 I)) f1 \<noteq> None" by (smt O2pre STORE_downstream_def fun_upd_eqD fun_upd_triv option.case_eq_if option.simps(3) snd_conv store_not_none)
 
-        hence "\<exists> y . filesystem (STORE_downstream f1 mo1 mn1 (STORE_downstream f2 mo2 mn2 I)) f1 = Some y" by simp
-        then obtain y where Ass4: "filesystem (STORE_downstream f1 mo1 mn1 (STORE_downstream f2 mo2 mn2 I)) f1 = Some y" by blast
+        hence "filesystem (STORE_downstream f1 mo1 mn1 (STORE_downstream f2 mo2 mn2 I)) f1 \<noteq> None"
+        by (smt O2pre STORE_downstream_def fun_upd_eqD fun_upd_triv option.case_eq_if option.simps(3) snd_conv store_not_none)
 
-        have "\<exists> S . filesystem (I) f1 = Some S" by (metis O2pre STORE_atSource_def \<open>f1 = f2\<close> case_optionE msgLookup_def)
-        then obtain S where Ass2: "(filesystem I) f1 = Some S" by blast
+        hence "\<exists> y . filesystem (STORE_downstream f1 mo1 mn1 (STORE_downstream f2 mo2 mn2 I)) f1 = Some y"
+        by simp
 
-        have "\<exists> x . filesystem (STORE_downstream f2 mo2 mn2 I) f1 = Some x" using Ass by (metis O2pre option.collapse store_not_none)
-        then obtain x where Ass3: "filesystem (STORE_downstream f2 mo2 mn2 I) f1 = Some x" by blast
+        then obtain y
+        where Ass4: "filesystem (STORE_downstream f1 mo1 mn1 (STORE_downstream f2 mo2 mn2 I)) f1 = Some y"
+        by blast
 
-        have "x = (S - {mo2}) \<union> {mn2}" using Ass Ass2 Ass3 unfolding STORE_downstream_def replaceMsg_def  by simp
-        hence Ass6: "y = (S - {mo1,mo2}) \<union> {mn1,mn2}" using Ass Ass2 Ass3 Ass4 O1pre O2pre unfolding STORE_downstream_def replaceMsg_def STORE_atSource_def by auto
+        have "\<exists> S . filesystem (I) f1 = Some S"
+        by (metis O2pre STORE_atSource_def \<open>f1 = f2\<close> case_optionE msgLookup_def)
 
-        have "\<exists> w . filesystem (STORE_downstream f1 mo1 mn1 I) f1 = Some w" using Ass by (metis O1pre option.collapse store_not_none)
-        then obtain w where Ass8: "filesystem (STORE_downstream f1 mo1 mn1 I) f1 = Some w" by blast
+        then obtain S
+        where Ass2: "(filesystem I) f1 = Some S"
+        by blast
 
-        hence Ass9: "w = (S - {mo1}) \<union> {mn1}" using Ass Ass2 unfolding STORE_downstream_def replaceMsg_def by simp
+        have "\<exists> x . filesystem (STORE_downstream f2 mo2 mn2 I) f1 = Some x"
+        using Ass
+        by (metis O2pre option.collapse store_not_none)
 
-        have "filesystem(STORE_downstream f2 mo2 mn2 (STORE_downstream f1 mo1 mn1 I)) f1 \<noteq> None" using O1pre unfolding STORE_downstream_def using Ass Ass2 by auto
+        then obtain x
+        where Ass3: "filesystem (STORE_downstream f2 mo2 mn2 I) f1 = Some x"
+        by blast
 
-        hence "\<exists> z . filesystem(STORE_downstream f2 mo2 mn2 (STORE_downstream f1 mo1 mn1 I)) f1 = Some z" by simp
+        have "x = (S - {mo2}) \<union> {mn2}"
+        using Ass Ass2 Ass3
+        unfolding STORE_downstream_def replaceMsg_def
+        by simp
 
-        then obtain z where Ass7: "filesystem(STORE_downstream f2 mo2 mn2 (STORE_downstream f1 mo1 mn1 I)) f1 = Some z" by blast
+        hence Ass6: "y = (S - {mo1,mo2}) \<union> {mn1,mn2}"
+        using Ass Ass2 Ass3 Ass4 O1pre O2pre
+        unfolding STORE_downstream_def replaceMsg_def STORE_atSource_def
+        by auto
 
-        hence "z = (S - {mo1,mo2}) \<union> {mn1,mn2}" using Ass Ass2 Ass9 Ass8 O1pre O2pre unfolding STORE_downstream_def replaceMsg_def STORE_atSource_def by auto
+        have "\<exists> w . filesystem (STORE_downstream f1 mo1 mn1 I) f1 = Some w"
+        using Ass
+        by (metis O1pre option.collapse store_not_none)
 
-        thus "filesystem (STORE_downstream f2 mo1 mn1 (STORE_downstream f2 mo2 mn2 I)) f2 = filesystem (STORE_downstream f2 mo2 mn2 (STORE_downstream f2 mo1 mn1 I)) f2" using Ass7 Ass4 Ass6 Ass by auto
+        then obtain w
+        where Ass8: "filesystem (STORE_downstream f1 mo1 mn1 I) f1 = Some w"
+        by blast
+
+        hence Ass9: "w = (S - {mo1}) \<union> {mn1}"
+        using Ass Ass2
+        unfolding STORE_downstream_def replaceMsg_def
+        by simp
+
+        have "filesystem(STORE_downstream f2 mo2 mn2 (STORE_downstream f1 mo1 mn1 I)) f1 \<noteq> None"
+        using O1pre
+        unfolding STORE_downstream_def
+        using Ass Ass2
+        by auto
+
+        hence "\<exists> z . filesystem(STORE_downstream f2 mo2 mn2 (STORE_downstream f1 mo1 mn1 I)) f1 = Some z"
+        by simp
+
+        then obtain z
+        where Ass7: "filesystem(STORE_downstream f2 mo2 mn2 (STORE_downstream f1 mo1 mn1 I)) f1 = Some z"
+        by blast
+
+        hence "z = (S - {mo1,mo2}) \<union> {mn1,mn2}"
+        using Ass Ass2 Ass9 Ass8 O1pre O2pre
+        unfolding STORE_downstream_def replaceMsg_def STORE_atSource_def
+        by auto
+
+        thus "filesystem (STORE_downstream f2 mo1 mn1 (STORE_downstream f2 mo2 mn2 I)) f2 = filesystem (STORE_downstream f2 mo2 mn2 (STORE_downstream f2 mo1 mn1 I)) f2"
+        using Ass7 Ass4 Ass6 Ass
+        by auto
     qed
 
-    thus ?thesis using A1 A5 by (smt O1pre O2pre STORE_downstream_def fun_upd_same fun_upd_twist fun_upd_upd option.case_eq_if prod_eqI snd_conv store_not_none)
+    thus ?thesis
+    using A1 A2
+    by (smt O1pre O2pre STORE_downstream_def fun_upd_same fun_upd_twist fun_upd_upd option.case_eq_if prod_eqI snd_conv store_not_none)
 qed
 
 
@@ -648,22 +815,38 @@ assumes
     O2pre: "STORE_atSource f2 mo mn I"
 shows "EXPUNGE_downstream f1 m1 (STORE_downstream f2 mo mn I) = STORE_downstream f2 mo mn (EXPUNGE_downstream f1 m1 I)"
 proof -
-    have A1: "folderset (EXPUNGE_downstream f1 m1 (STORE_downstream f2 mo mn I)) = folderset (STORE_downstream f2 mo mn (EXPUNGE_downstream f1 m1 I))" unfolding EXPUNGE_downstream_def STORE_downstream_def by simp
+    have A1: "folderset (EXPUNGE_downstream f1 m1 (STORE_downstream f2 mo mn I)) = folderset (STORE_downstream f2 mo mn (EXPUNGE_downstream f1 m1 I))"
+    unfolding EXPUNGE_downstream_def STORE_downstream_def
+    by simp
 
-    have A2: "\<forall> f . f1 \<noteq> f2 \<longrightarrow> filesystem (EXPUNGE_downstream f1 m1 (STORE_downstream f2 mo mn I)) f = filesystem (STORE_downstream f2 mo mn (EXPUNGE_downstream f1 m1 I)) f" using O1pre O2pre unfolding EXPUNGE_downstream_def EXPUNGE_atSource_def STORE_downstream_def STORE_atSource_def by (smt fun_upd_other fun_upd_twist option.case_eq_if snd_conv)
+    have A2: "\<forall> f . f1 \<noteq> f2 \<longrightarrow> filesystem (EXPUNGE_downstream f1 m1 (STORE_downstream f2 mo mn I)) f = filesystem (STORE_downstream f2 mo mn (EXPUNGE_downstream f1 m1 I)) f"
+    using O1pre O2pre
+    unfolding EXPUNGE_downstream_def EXPUNGE_atSource_def STORE_downstream_def STORE_atSource_def
+    by (smt fun_upd_other fun_upd_twist option.case_eq_if snd_conv)
 
-    have A3: "\<forall> f . (f1 = f2 \<and> f \<noteq> f1) \<longrightarrow> filesystem (EXPUNGE_downstream f1 m1 (STORE_downstream f2 mo mn I)) f = filesystem (STORE_downstream f2 mo mn (EXPUNGE_downstream f1 m1 I)) f" using O1pre O2pre unfolding EXPUNGE_downstream_def EXPUNGE_atSource_def STORE_downstream_def STORE_atSource_def by (smt fun_upd_other fun_upd_twist option.case_eq_if snd_conv)
+    have A3: "\<forall> f . (f1 = f2 \<and> f \<noteq> f1) \<longrightarrow> filesystem (EXPUNGE_downstream f1 m1 (STORE_downstream f2 mo mn I)) f = filesystem (STORE_downstream f2 mo mn (EXPUNGE_downstream f1 m1 I)) f"
+    using O1pre O2pre
+    unfolding EXPUNGE_downstream_def EXPUNGE_atSource_def STORE_downstream_def STORE_atSource_def
+    by (smt fun_upd_other fun_upd_twist option.case_eq_if snd_conv)
 
-    have "f1 = f2 \<longrightarrow> filesystem (EXPUNGE_downstream f1 m1 (STORE_downstream f2 mo mn I)) f1 = filesystem (STORE_downstream f2 mo mn (EXPUNGE_downstream f1 m1 I)) f1" using O1pre O2pre unfolding EXPUNGE_downstream_def EXPUNGE_atSource_def STORE_downstream_def STORE_atSource_def msgLookup_def replaceMsg_def by (smt Diff_empty Diff_insert Diff_insert0 Un_Diff empty_iff fun_upd_same insertE insert_commute map_upd_eqD1 option.case_eq_if option.collapse option.simps(3) snd_conv)
+    have "f1 = f2 \<longrightarrow> filesystem (EXPUNGE_downstream f1 m1 (STORE_downstream f2 mo mn I)) f1 = filesystem (STORE_downstream f2 mo mn (EXPUNGE_downstream f1 m1 I)) f1"
+    using O1pre O2pre
+    unfolding EXPUNGE_downstream_def EXPUNGE_atSource_def STORE_downstream_def STORE_atSource_def msgLookup_def replaceMsg_def
+    by (smt Diff_empty Diff_insert Diff_insert0 Un_Diff empty_iff fun_upd_same insertE insert_commute map_upd_eqD1 option.case_eq_if option.collapse option.simps(3) snd_conv)
 
-    hence "filesystem (EXPUNGE_downstream f1 m1 (STORE_downstream f2 mo mn I)) = filesystem (STORE_downstream f2 mo mn (EXPUNGE_downstream f1 m1 I))" using O1pre O2pre A2 A3 unfolding EXPUNGE_downstream_def EXPUNGE_atSource_def STORE_downstream_def STORE_atSource_def by fastforce
+    hence "filesystem (EXPUNGE_downstream f1 m1 (STORE_downstream f2 mo mn I)) = filesystem (STORE_downstream f2 mo mn (EXPUNGE_downstream f1 m1 I))"
+    using O1pre O2pre A2 A3
+    unfolding EXPUNGE_downstream_def EXPUNGE_atSource_def STORE_downstream_def STORE_atSource_def
+    by fastforce
 
-    thus ?thesis using A1 prod_eqI by blast
+    thus ?thesis
+    using A1 prod_eqI
+    by blast
 qed
 
 
 -- "Case 15"
-lemma commEXPUNGE:
+lemma commEXPUNGE_EXPUNGE:
 fixes
     I :: "('a, 'b) imap" and
     f1 :: "'a" and
@@ -675,11 +858,18 @@ assumes
     O2pre: " EXPUNGE_atSource f2 m2 I"
 shows "EXPUNGE_downstream f1 m1 (EXPUNGE_downstream f2 m2 I) = EXPUNGE_downstream f2 m2 (EXPUNGE_downstream f1 m1 I)"
 proof -
-    have A1: "folderset (EXPUNGE_downstream f1 m1 (EXPUNGE_downstream f2 m2 I)) = folderset (EXPUNGE_downstream f2 m2 (EXPUNGE_downstream f1 m1 I))" unfolding EXPUNGE_downstream_def EXPUNGE_atSource_def by simp
+    have A1: "folderset (EXPUNGE_downstream f1 m1 (EXPUNGE_downstream f2 m2 I)) = folderset (EXPUNGE_downstream f2 m2 (EXPUNGE_downstream f1 m1 I))"
+    unfolding EXPUNGE_downstream_def EXPUNGE_atSource_def
+    by simp
 
-    have "filesystem (EXPUNGE_downstream f1 m1 (EXPUNGE_downstream f2 m2 I)) = filesystem (EXPUNGE_downstream f2 m2 (EXPUNGE_downstream f1 m1 I))" using O1pre O2pre unfolding EXPUNGE_downstream_def EXPUNGE_atSource_def msgLookup_def by (smt Diff_insert fun_upd_twist fun_upd_upd insert_commute map_upd_Some_unfold option.case_eq_if option.collapse option.simps(3) snd_conv)
+    have "filesystem (EXPUNGE_downstream f1 m1 (EXPUNGE_downstream f2 m2 I)) = filesystem (EXPUNGE_downstream f2 m2 (EXPUNGE_downstream f1 m1 I))"
+    using O1pre O2pre
+    unfolding EXPUNGE_downstream_def EXPUNGE_atSource_def msgLookup_def
+    by (smt Diff_insert fun_upd_twist fun_upd_upd insert_commute map_upd_Some_unfold option.case_eq_if option.collapse option.simps(3) snd_conv)
 
-    thus ?thesis using A1 by (simp add: prod_eqI)
+    thus ?thesis
+    using A1
+    by (simp add: prod_eqI)
 qed
 
 
