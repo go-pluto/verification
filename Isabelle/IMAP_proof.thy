@@ -1,11 +1,14 @@
+section {* IMAP Proof *}
+
 theory IMAP_proof
 imports IMAP_def ORSet_proof
 begin
-  
--- "########################"
--- "### Auxiliary Lemmas ###"
--- "########################"
 
+text {* 
+  We begin by showing auxiliary lemmas that simplify further proofs. The lemma 
+  @{term append_not_none} shows that an append operation on a valid imap state never leads to an 
+  undefined filesystem state.
+*}
 lemma append_not_none:
 fixes
   I :: "('a, 'b) imap" and
@@ -27,6 +30,9 @@ proof -
     by auto
 qed
 
+text {* 
+  The lemma @{term append_folderset} shows the folderset is not modified by an append operation.
+*}
 lemma append_folderset:
 fixes
   I :: "('a, 'b) imap" and
@@ -37,6 +43,10 @@ proof -
   show ?thesis unfolding append_def by auto
 qed
 
+text {* 
+  The lemma @{term append_filesytem} shows that an append operation only modifies the filesystem 
+  entry for the selected folder.
+*}
 lemma append_filesystem:
 fixes
   I :: "('a, 'b) imap" and
@@ -50,6 +60,9 @@ proof -
   show ?thesis by (simp add: append_def option.case_eq_if)
 qed
 
+text {* 
+  The lemma @{term store_folderset} shows that a store operation does not modify the folderset.
+*}
 lemma store_folderset:
 fixes
   I :: "('a, 'b) imap" and
@@ -59,6 +72,10 @@ proof -
   show ?thesis by (simp add: store_def)
 qed
 
+text {* 
+  Similar to the lemma @{term  append_filesystem}, the lemma @{term store_folderset} shows that 
+  a store operation only modifies the filesystem state for the selected folder.
+*}
 lemma store_filesystem:
 fixes
   I :: "('a, 'b) imap" and
@@ -68,6 +85,10 @@ proof -
   show ?thesis by (simp add: store_def option.case_eq_if)
 qed
 
+text {* 
+  The lemma @{term store_not_none} shows that a store operation never results in an undefined 
+  filesystem state.
+*}
 lemma store_not_none:
 fixes
   I :: "('a, 'b) imap" and
@@ -83,10 +104,12 @@ proof -
   by (metis fun_upd_same option.case_eq_if option.simps(3) snd_conv)
 qed
 
--- "#########################################"
--- "### State Validity of IMAP Operations ###"
--- "#########################################"
-
+subsection {* State Validity *}
+	
+text {* 
+  With the following lemmas we show, that each operation on the imap datatype that is executed on
+  a valid state also results in a valid state. We show this property for all defined operations.
+*}
 lemma create_valid:
 fixes
   I :: "('a, 'b) imap" and
@@ -188,23 +211,14 @@ proof -
     by (simp add: case_prod_beta' option.case_eq_if)
 qed
 
--- "###############################################"
--- "### Commutativity Proofs of IMAP Operations ###"
--- "###############################################"
+subsection {*Operation Commutativity *}
 
--- "        CREATE DELETE APPEND STORE EXPUNGE"
--- "                                          "
--- " CREATE    1      2     3      4      5   "
--- "                                          "
--- " DELETE    2      6     7      8      9   "
--- "                                          "
--- " APPEND    3      7    10     11     12   "
--- "                                          "
--- "  STORE    4      8    11     13     14   "
--- "                                          "
--- "EXPUNGE    5      9    12     14     15   "
-
--- "Case 1"
+text {* 
+  With the following lemmas we show, that each combination of operations is commutative. From the 
+  5 imap operations we derive 15 cases and show each case individually. Note that every lemma only
+  uses the atSource precondition of the corresponding operation and that no further assumptions are
+  made.
+*}
 lemma comm_create_create:
 fixes
   I :: "('a, 'b) imap" and
@@ -223,7 +237,6 @@ proof -
     by auto
 qed
 
--- "Case 2"
 lemma comm_create_delete:
 fixes
   I :: "('a, 'b) imap" and
@@ -245,8 +258,7 @@ proof -
     by fastforce
   thus ?thesis using A1 by (simp add: delete_def)
 qed
-  
--- "Case 3"
+
 lemma comm_create_append:
 fixes
   I :: "('a, 'b) imap" and
@@ -265,8 +277,7 @@ proof -
     by (simp add: option.case_eq_if, auto)
   thus ?thesis by (simp add: append_def create_def)
 qed
-  
--- "Case 4"
+
 lemma comm_create_store:
 fixes
   I :: "('a, 'b) imap" and
@@ -288,8 +299,7 @@ proof -
     by (simp add: option.case_eq_if, auto)
   thus ?thesis by (simp add: A1 prod.expand)
 qed
-  
--- "Case 5"
+
 lemma comm_create_expunge:
 fixes
   I :: "('a, 'b) imap" and
@@ -310,8 +320,7 @@ proof -
     by (simp add: fun_upd_twist option.case_eq_if)
   thus ?thesis using A1 prod_eqI by blast
 qed
-  
--- "Case 6"
+
 lemma comm_delete_delete:
 fixes
   I :: "('a, 'b) imap" and
@@ -332,8 +341,7 @@ proof -
     by (metis (mono_tags, lifting) delete_def fun_upd_twist snd_conv)    
   thus ?thesis using A1 by (simp add: delete_def)
 qed
-  
--- "Case 7"
+
 lemma comm_delete_append:
 fixes
   I :: "('a, 'b) imap" and
@@ -354,8 +362,7 @@ proof -
     by (simp add: fun_upd_twist option.case_eq_if)
   thus ?thesis using A1 prod_eqI  by blast
 qed
-  
--- "Case 8"
+
 lemma comm_delete_store:
 fixes
   I :: "('a, 'b) imap" and
@@ -377,8 +384,7 @@ proof -
     by (simp add: fun_upd_twist option.case_eq_if)
   thus ?thesis by (simp add: A1 prod.expand)
 qed
-  
--- "Case 9"
+
 lemma comm_delete_expunge:
 fixes
   I :: "('a, 'b) imap" and
@@ -401,8 +407,7 @@ proof -
     using A1 prod_eqI
     by blast
 qed
-  
--- "Case 10"
+
 lemma comm_append_append:
 fixes
   I :: "('a, 'b) imap" and
@@ -423,8 +428,7 @@ proof -
     by (simp add: option.case_eq_if, auto)
   thus ?thesis using A1 by (simp add: prod_eq_iff)
 qed
-  
--- "Case 11"
+
 lemma comm_append_store:
 fixes
   I :: "('a, 'b) imap" and
@@ -445,8 +449,7 @@ proof -
     by (simp add: option.case_eq_if, auto)
   thus ?thesis using A1 by (simp add: prod.expand)
 qed
-  
--- "Case 12"
+
 lemma comm_append_expunge:
 fixes
   I :: "('a, 'b) imap" and
@@ -469,7 +472,6 @@ proof -
   thus ?thesis using A1 prod_eqI by blast
 qed
 
--- "Case 13"
 lemma comm_store_store:
 fixes
   I :: "('a, 'b) imap" and
@@ -547,7 +549,6 @@ proof -
     by (simp add: store_def option.case_eq_if, auto)
 qed
 
--- "Case 14"
 lemma comm_store_expunge:
 fixes
   I :: "('a, 'b) imap" and
@@ -582,7 +583,6 @@ proof -
   thus ?thesis using A1 prod_eqI by blast
 qed
 
--- "Case 15"
 lemma comm_expunge_expunge:
 fixes
   I :: "('a, 'b) imap" and
@@ -604,11 +604,15 @@ proof -
     by (simp add: option.case_eq_if, auto)
   thus ?thesis using A1 by (simp add: prod_eqI)
 qed
-  
--- "###############"
--- "### Theorem ###"
--- "###############"  
-  
+
+subsection {* Theorem *}
+
+text {* 
+  We propose the final theorem, showing that all combinations of operations on the imap datatype
+  are commutative. For each operation we assume, that the atSource precondition holds for the 
+  current state @{term I}. We show each case individually using the previously defined 
+  commutativity lemmas.
+*}
 theorem imap_comm :
 fixes
   I :: "('a, 'b) imap" and

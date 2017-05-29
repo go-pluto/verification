@@ -1,7 +1,10 @@
+section {* ORSet Proofs *}
+
 theory ORSet_proof
 imports ORSet_def
-begin 
+begin
 
+text {* We show, that all operations on the OR-Set datatype are commutative.*}
 theorem orset_comm :
 fixes
   S :: "'a orset" and

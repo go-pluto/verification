@@ -1,0 +1,71 @@
+\documentclass[11pt,a4paper, DIV=11]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{isabelle,isabellesym}
+\usepackage{amssymb}
+\usepackage{amsmath,amsfonts}
+
+\renewcommand{\bf}{\normalfont\bfseries}
+\renewcommand{\rm}{\normalfont\rmfamily}
+\renewcommand{\it}{\normalfont\itshape}
+
+\usepackage{pdfsetup}
+
+\hypersetup{
+  pdfinfo={
+    Title={The IMAP CmRDT},
+    Subject={},
+    Keywords={IMAP, Isabelle, CRDT},
+    Author={The Pluto Team},
+    Creator={}
+  },
+  bookmarksopen=true,
+  bookmarksnumbered,
+  bookmarksopenlevel=2,
+  bookmarksdepth=3
+}
+
+% urls in roman style, theory text in math-similar italics
+\urlstyle{rm}
+\isabellestyle{it}
+
+\renewcommand{\isastyle}{\isastyleminor}
+
+\begin{document}
+
+\title{The IMAP CmRDT}
+\author{The Pluto Team}
+\date{\today}
+\maketitle
+
+\begin{abstract}
+  We present an IMAP CRDT.
+\end{abstract}
+
+\tableofcontents
+\newpage
+
+\section{Introduction}
+
+TODO: add Introduction and present Theorems
+
+\section{Background}
+
+TODO: present Background \cite{shapiro_crdt}
+
+% sane default for proof documents
+\parindent 0pt\parskip 0.5ex
+
+% generated text of all theories
+\input{session}
+
+% optional bibliography
+\bibliographystyle{abbrv}
+\bibliography{root}
+
+\end{document}
+
+%%% Local Variables:
+%%% mode: latex
+%%% TeX-master: t
+%%% End:
