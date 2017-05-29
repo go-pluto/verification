@@ -23,7 +23,7 @@ abbreviation filesystem ::
 where
   "filesystem I \<equiv> snd I"
   
-subsection {* Auxiliary Definitions  *}
+subsection {* Auxiliary Definition  *}
 
 text {* 
   We define an imap instance to be valid, if each folder in the folderset is present in the 
