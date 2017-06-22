@@ -5,10 +5,10 @@ imports ORSet_def
 begin
 	
 text {* 
-  Based on the previously defined OR-Set we define the @{term imap} datatype by combining an 
+  Based on the previously defined OR-Set we define the @{term imap} datatype by combining an
   OR-Set with a partial function. The OR-Set represents the set of folders inside a mailbox. The
-  partial function can be interpreted as a filesystem, where we have for each mailbox a folder, 
-  which contains a set of message files. Hence, the abbreviations @{term folderset} and 
+  partial function can be interpreted as a file system, where we have for each mailbox a folder
+  which contains a set of message files. Hence the abbreviations @{term folderset} and
   @{term filesystem}.
 *}
 type_synonym ('a, 'b) imap = "'a orset \<times> ('a \<rightharpoonup> 'b set)"
@@ -23,7 +23,7 @@ abbreviation filesystem ::
 where
   "filesystem I \<equiv> snd I"
   
-subsection {* Auxiliary Definition  *}
+subsection {* Auxiliary Definitions *}
 
 text {* 
   We define an imap instance to be valid, if each folder in the folderset is present in the 

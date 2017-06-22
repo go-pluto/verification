@@ -1,4 +1,4 @@
-section {* ORSet Proofs *}
+section {* OR-Set Proofs *}
 
 theory ORSet_proof
 imports ORSet_def
