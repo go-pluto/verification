@@ -1,10 +1,11 @@
-# pluto-verification
-Verification-related documentation and code for pluto. https://github.com/numbleroot/pluto
+# verification
+
+Verification-related documentation and code for [pluto](https://github.com/go-pluto/pluto).
+
 
 ## Isabelle build
-We use the interactive theorem prover Isabelle to show the correctness of 
-pluto's core concept: the IMAP CmRDT. The formaliziation can be found in the 
-corresponding theory files *.thy* in the Isabelle folder.
+
+We use the interactive theorem prover Isabelle to show the correctness of pluto's core concept: the IMAP CmRDT. The formaliziation can be found in the corresponding theory files *.thy* in the Isabelle folder.
 
 In order to create the proof document and the HTML overview, please navigate to the Isabelle folder of the repository and use:
 
