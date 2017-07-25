@@ -102,7 +102,7 @@ text {*
 definition append_pre ::
   "'a \<Rightarrow> 'b \<Rightarrow> ('a, 'b) imap \<Rightarrow> bool"
 where
-  "append_pre f m I = (\<exists> (a, _) \<in> folderset I . a = f \<and> \<not> msgLookup f m I)"
+  "append_pre f m I = (\<exists> (a, _) \<in> folderset I . a = f )"
 
 definition append ::
   "'a \<Rightarrow> 'b \<Rightarrow> ('a, 'b) imap \<Rightarrow> ('a, 'b) imap"
