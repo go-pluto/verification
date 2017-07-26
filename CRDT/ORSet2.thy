@@ -15,21 +15,23 @@ imports
   Network
 begin
 
-datatype ('id, 'a, 'b) operation = Add "'id" "'a" | Rem "'id set" "'a" "'b set" | Append "'a" "'b"
+datatype ('id, 'a, 'b) operation = Add "'id" "'a" | Rem "'id set" "'a" "'b set" | Append "'a" "'b" |
+	Store "'a" "'b" "'b"
 
 type_synonym ('id, 'a, 'b) state = "('a \<Rightarrow> 'id set) \<times> ('a \<rightharpoonup> 'b set)"
 
 definition op_elem :: "('id, 'a, 'b) operation \<Rightarrow> 'a" where
-  "op_elem oper \<equiv> case oper of Add i e \<Rightarrow> e | Rem is e m \<Rightarrow> e | Append e m \<Rightarrow> e"
+  "op_elem oper \<equiv> case oper of Add i e \<Rightarrow> e | Rem is e m \<Rightarrow> e | Append e m \<Rightarrow> e | Store e mo mn \<Rightarrow> e"
 		
 definition interpret_op :: "('id, 'a, 'b) operation \<Rightarrow> ('id, 'a, 'b) state \<rightharpoonup> ('id, 'a, 'b) state" ("\<langle>_\<rangle>" [0] 1000) where
   "interpret_op oper state \<equiv>
      let before = ((fst state) (op_elem oper));
-         after  = case oper of Add i e \<Rightarrow> before \<union> {i} | Rem is e m \<Rightarrow> before - is | Append e m \<Rightarrow> before;
+         after  = case oper of Add i e \<Rightarrow> before \<union> {i} | Rem is e m \<Rightarrow> before - is | Append e m \<Rightarrow> before | Store e mo mn \<Rightarrow> before;
          filesystem = case oper of 
            Add i e \<Rightarrow> (case snd state e of None \<Rightarrow> Some {} | Some f \<Rightarrow> Some f) | 
            Rem is e m \<Rightarrow> (case snd state e of None \<Rightarrow> None | Some f \<Rightarrow> Some (f - m)) |
-					 Append e m \<Rightarrow> (case snd state e of None \<Rightarrow> None | Some f \<Rightarrow> Some (insert m f))
+					 Append e m \<Rightarrow> (case snd state e of None \<Rightarrow> None | Some f \<Rightarrow> Some (insert m f)) |
+					 Store e mo mn \<Rightarrow> (case snd state e of None \<Rightarrow> None | Some f \<Rightarrow> Some (insert mn (f - {mo})))
      in  Some ((fst state) ((op_elem oper) := after), (snd state) ((op_elem oper) := filesystem))"
   
 definition valid_behaviours :: "('id, 'a, 'b) state \<Rightarrow> 'id \<times> ('id, 'a, 'b) operation \<Rightarrow> bool" where
@@ -120,6 +122,31 @@ lemma rem_append_commute:
 	shows " (\<langle>Rem is e1 m1\<rangle> \<rhd> \<langle>Append e2 m2\<rangle>) x = (\<langle>Append e2 m2\<rangle> \<rhd> \<langle>Rem is e1 m1\<rangle>) x"
 		unfolding interpret_op_def kleisli_def op_elem_def apply simp using assms
 		by (simp add: assms(1) fun_upd_twist insert_Diff_if option.case_eq_if)
+			
+lemma store_store_commute:
+	assumes "mn1 \<noteq> mo1" and "mn1 \<noteq> mo2" and "mn2 \<noteq> mo1" and "mn2 \<noteq> mo2"
+shows " (\<langle>Store e1 mo1 mn1\<rangle> \<rhd> \<langle>Store e2 mo2 mn2\<rangle>) x = (\<langle>Store e2 mo2 mn2\<rangle> \<rhd> \<langle>Store e1 mo1 mn1\<rangle>) x"
+	unfolding interpret_op_def kleisli_def op_elem_def apply (case_tac "e1=e2") apply simp apply auto using assms
+	by (smt Diff_insert insert_Diff_if insert_commute option.case_eq_if option.discI option.sel singletonD)
+		
+lemma store_add_commute:
+	assumes  "(snd x) e2 \<noteq> None"
+shows " (\<langle>Add i e1\<rangle> \<rhd> \<langle>Store e2 mo2 mn2\<rangle>) x = (\<langle>Store e2 mo2 mn2\<rangle> \<rhd> \<langle>Add i e1\<rangle>) x"
+	unfolding interpret_op_def kleisli_def op_elem_def apply (case_tac "e1=e2") apply simp apply auto
+	by (simp add: assms option.case_eq_if)
+
+lemma store_rem_commute:
+	assumes "mn2 \<notin> m"
+shows " (\<langle>Rem is e1 m\<rangle> \<rhd> \<langle>Store e2 mo2 mn2\<rangle>) x = (\<langle>Store e2 mo2 mn2\<rangle> \<rhd> \<langle>Rem is e1 m\<rangle>) x"
+	unfolding interpret_op_def kleisli_def op_elem_def apply (case_tac "e1=e2") apply simp apply auto
+	using assms by (smt Diff_insert Diff_insert2 insert_Diff_if option.case_eq_if option.simps(5))
+		
+lemma store_append_commute:
+	assumes "m \<noteq> mo2"
+shows " (\<langle>Append e1 m\<rangle> \<rhd> \<langle>Store e2 mo2 mn2\<rangle>) x = (\<langle>Store e2 mo2 mn2\<rangle> \<rhd> \<langle>Append e1 m\<rangle>) x"
+	unfolding interpret_op_def kleisli_def op_elem_def apply (case_tac "e1=e2") apply simp apply auto
+	by (simp add: assms insert_Diff_if insert_commute option.case_eq_if)
+		
 
 lemma (in orset) apply_operations_never_fails:
   assumes "xs prefix of i"
