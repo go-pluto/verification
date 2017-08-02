@@ -46,7 +46,7 @@ definition valid_behaviours :: "('id, 'a) state \<Rightarrow> 'id \<times> ('id,
        (i, Add j e) \<Rightarrow> i = j |
        (i, Rem is e) \<Rightarrow> is = fst state e |
 			 (i, Append e m) \<Rightarrow> i = m |
-			 (i, Store e mo mn) \<Rightarrow> i = mn"
+			 (i, Store e mo mn) \<Rightarrow> i = mn \<and> mo \<in> fst state e"
 
 locale orset = network_with_constrained_ops _ interpret_op "(\<lambda>x. {}, \<lambda>y. None)" valid_behaviours
 
@@ -477,6 +477,27 @@ lemma (in orset) Broadcast_Deliver_prefix_closed2:
   shows "Deliver (i, Add i e) \<in> set xs \<or> Deliver (i, Append e i) \<in> set xs \<or> Deliver (i, Store e mo i) \<in> set xs"
   using assms Broadcast_Deliver_prefix_closed by (induction xs rule: rev_induct; force)
   	
+lemma (in orset) Broadcast_Deliver_prefix_closed3:
+  assumes "xs @ [Broadcast (mn, Store e mo mn)] prefix of j"
+    and "i = mo"
+  shows "Deliver (i, Add i e) \<in> set xs \<or> Deliver (i, Append e i) \<in> set xs \<or> Deliver (i, Store e mo2 i) \<in> set xs"
+proof - 
+  obtain y where "apply_operations xs = Some y"
+    using assms broadcast_only_valid_msgs by blast
+  moreover hence "mo \<in> fst y e"
+  	using broadcast_only_valid_msgs[of xs "(mn, Store e mo mn)" j] valid_behaviours_def [of y "(mn, Store e mo mn)"] 
+  	using assms(1) by auto
+  ultimately show ?thesis
+    using assms Deliver_added_ids apply_operations_added_ids by blast
+qed
+	
+lemma (in orset) Broadcast_Deliver_prefix_closed4:
+  assumes "xs prefix of j"
+    and "Broadcast (mn, Store e mo mn) \<in> set xs"
+    and "i = mo"
+  shows "Deliver (i, Add i e) \<in> set xs \<or> Deliver (i, Append e i) \<in> set xs \<or> Deliver (i, Store e mo2 i) \<in> set xs"
+  using assms Broadcast_Deliver_prefix_closed3 by (induction xs rule: rev_induct; fastforce)
+  	
 lemma (in orset) ids_are_unique:
     assumes "xs prefix of j"
     and "(i, Add i e1) \<in> set (node_deliver_messages xs)" 
@@ -485,6 +506,13 @@ lemma (in orset) ids_are_unique:
   shows "i \<noteq> k \<and> l \<noteq> k \<and> i \<noteq> l"
   	using assms delivery_has_a_cause events_before_exist prefix_msg_in_history
   	by (metis fst_conv msg_id_unique operation.distinct(11) operation.distinct(3) operation.distinct(5) prod.inject)
+  		
+lemma (in orset) append_prohibits_others:
+    assumes "xs prefix of j"
+    and "(i, Append e i) \<in> set (node_deliver_messages xs)"
+    shows "(i, Store e mo i) \<notin> set (node_deliver_messages xs) \<and> (i, Add i e) \<notin> set (node_deliver_messages xs)" 
+  	using assms delivery_has_a_cause events_before_exist prefix_msg_in_history
+  	by (metis fst_conv msg_id_unique operation.distinct(11) operation.distinct(3) prod.inject)
 
 lemma (in orset) concurrent_add_remove_independent_technical:
   assumes "i \<in> is"
@@ -498,6 +526,58 @@ proof -
     using Broadcast_Deliver_prefix_closed[of "pre" "ir" "is" "e" "k" "i" "mo"] assms(1) by auto
     	
   hence "Deliver (i, Add i e) \<in> set pre" using assms(2) assms(3) ids_are_unique[of "xs" j i e i e i e mo]
+  	by (smt calculation fst_conv network.delivery_has_a_cause network.msg_id_unique network_axioms prefix_elem_to_carriers prefix_msg_in_history prefix_of_appendD)
+  ultimately show ?thesis
+    using hb.intros(2) events_in_local_order by blast
+qed
+	
+lemma (in orset) concurrent_add_store_independent_technical:
+  assumes "i = mo"
+    and "xs prefix of j"
+    and "(i, Add i e) \<in> set (node_deliver_messages xs)" and "(mn, Store e mo mn) \<in> set (node_deliver_messages xs)"
+  shows "hb (i, Add i e) (mn, Store e mo mn)"
+proof -
+  obtain pre k where "pre@[Broadcast (mn, Store e mo mn)] prefix of k"
+    using assms delivery_has_a_cause events_before_exist prefix_msg_in_history by blast
+  moreover hence "Deliver (i, Add i e) \<in> set pre \<or> Deliver (i, Append e i) \<in> set pre \<or> Deliver (i, Store e mo2 i) \<in> set pre"
+    using Broadcast_Deliver_prefix_closed3[of pre mn e mo k i mo2] assms(1) by auto
+    	
+  hence "Deliver (i, Add i e) \<in> set pre" using assms(2) assms(3) ids_are_unique[of "xs" j i e i e i e mo]
+  	by (smt calculation fst_conv network.delivery_has_a_cause network.msg_id_unique network_axioms prefix_elem_to_carriers prefix_msg_in_history prefix_of_appendD)
+  ultimately show ?thesis
+    using hb.intros(2) events_in_local_order by blast
+qed
+	
+lemma (in orset) concurrent_append_store_independent_technical:
+  assumes "i = mo"
+    and "xs prefix of j"
+    and "(i, Append e i) \<in> set (node_deliver_messages xs)" and "(mn, Store e mo mn) \<in> set (node_deliver_messages xs)"
+  shows "hb (i, Append e i) (mn, Store e mo mn)"
+proof -
+  obtain pre k where "pre@[Broadcast (mn, Store e mo mn)] prefix of k"
+    using assms delivery_has_a_cause events_before_exist prefix_msg_in_history by blast
+  moreover hence "Deliver (i, Add i e) \<in> set pre \<or> Deliver (i, Append e i) \<in> set pre \<or> Deliver (i, Store e mo2 i) \<in> set pre"
+    using Broadcast_Deliver_prefix_closed3[of pre mn e mo k i mo2] assms(1) by auto
+    	
+  hence "Deliver (i, Append e i) \<in> set pre" using assms(2) assms(3) assms(1) 
+  		ids_are_unique[of "xs" j i e i e i e mo] 
+  	by (smt calculation fst_conv network.delivery_has_a_cause network.msg_id_unique network_axioms prefix_elem_to_carriers prefix_msg_in_history prefix_of_appendD)
+  ultimately show ?thesis
+    using hb.intros(2) events_in_local_order by blast
+qed
+	
+lemma (in orset) concurrent_store_store_independent_technical:
+  assumes "mn1 = mo2"
+    and "xs prefix of j"
+    and "(mn1, Store e mo1 mn1) \<in> set (node_deliver_messages xs)" and "(mn2, Store e mo2 mn2) \<in> set (node_deliver_messages xs)"
+  shows "hb (mn1, Store e mo1 mn1) (mn2, Store e mo2 mn2)"
+proof -
+  obtain pre k where "pre@[Broadcast (mn2, Store e mo2 mn2)] prefix of k"
+    using assms delivery_has_a_cause events_before_exist prefix_msg_in_history by blast
+  moreover hence "Deliver (mo2, Add mo2 e) \<in> set pre \<or> Deliver (mo2, Append e mo2) \<in> set pre \<or> Deliver (mo2, Store e mo1 mo2) \<in> set pre"
+    using Broadcast_Deliver_prefix_closed3 assms(1) by auto    	
+  hence "Deliver (mn1, Store e mo1 mn1) \<in> set pre" using assms(2) assms(3) assms(1) 
+  		ids_are_unique 
   	by (smt calculation fst_conv network.delivery_has_a_cause network.msg_id_unique network_axioms prefix_elem_to_carriers prefix_msg_in_history prefix_of_appendD)
   ultimately show ?thesis
     using hb.intros(2) events_in_local_order by blast
@@ -533,6 +613,62 @@ proof -
     by (metis fst_conv msg_id_unique network.delivery_has_a_cause network_axioms operation.inject(1)
         prefix_elem_to_carriers prefix_of_appendD prod.inject)
 qed
+	
+lemma (in orset) ids_imply_messages_same2:
+  assumes "i = mo"
+    and "xs prefix of j"
+    and "(i, Add i e1) \<in> set (node_deliver_messages xs)" and "(mn, Store e2 mo mn) \<in> set (node_deliver_messages xs)"
+  shows "e1 = e2"
+proof -
+  obtain pre k where "pre@[Broadcast (mn, Store e2 mo mn)] prefix of k"
+    using assms delivery_has_a_cause events_before_exist prefix_msg_in_history by blast
+  moreover hence "Deliver (i, Add i e2) \<in> set pre \<or> Deliver (i, Append e2 i) \<in> set pre \<or> Deliver (i, Store e2 mo2 i) \<in> set pre"
+    using Broadcast_Deliver_prefix_closed3 assms(1) ids_are_unique by blast
+  hence "Deliver (i, Add i e2) \<in> set pre" using assms(1) assms(2) assms(3)
+  	by (smt calculation fst_conv network.delivery_has_a_cause network.msg_id_unique network_axioms operation.simps(10) operation.simps(8) prefix_elem_to_carriers prefix_msg_in_history prefix_of_appendD prod.simps(1))
+  moreover have "Deliver (i, Add i e1) \<in> set (history j)"
+    using assms(2) assms(3) prefix_msg_in_history by blast
+  ultimately show ?thesis
+    by (metis fst_conv msg_id_unique network.delivery_has_a_cause network_axioms operation.inject(1)
+        prefix_elem_to_carriers prefix_of_appendD prod.inject)
+qed
+	
+lemma (in orset) ids_imply_messages_same3:
+  assumes "i = mo"
+    and "xs prefix of j"
+    and "(i, Append e1 i) \<in> set (node_deliver_messages xs)" and "(mn, Store e2 mo mn) \<in> set (node_deliver_messages xs)"
+  shows "e1 = e2"
+proof -
+  obtain pre k where "pre@[Broadcast (mn, Store e2 mo mn)] prefix of k"
+    using assms delivery_has_a_cause events_before_exist prefix_msg_in_history by blast
+  moreover hence "Deliver (i, Add i e2) \<in> set pre \<or> Deliver (i, Append e2 i) \<in> set pre \<or> Deliver (i, Store e2 mo2 i) \<in> set pre"
+    using Broadcast_Deliver_prefix_closed3 assms(1) ids_are_unique by blast
+  hence "Deliver (i, Append e2 i) \<in> set pre" using assms(1) assms(2) assms(3)
+  	by (smt calculation fst_conv network.delivery_has_a_cause network.msg_id_unique network_axioms operation.distinct(11) operation.distinct(3) prefix_elem_to_carriers prefix_msg_in_history prefix_of_appendD prod.inject)
+  moreover have "Deliver (i, Append e1 i) \<in> set (history j)"
+    using assms(2) assms(3) prefix_msg_in_history by blast
+  ultimately show ?thesis 
+  	by (smt added_ids_Deliver_Append_diff_collapse added_ids_Deliver_Append_same_collapse empty_iff fst_conv list.set(1) list.set_intros(1) network.delivery_has_a_cause network.msg_id_unique network_axioms prefix_elem_to_carriers prefix_of_appendD)
+qed
+		
+
+lemma (in orset) ids_imply_messages_same4:
+  assumes "mn1 = mo2"
+    and "xs prefix of j"
+    and "(mn1, Store e1 mo1 mn1) \<in> set (node_deliver_messages xs)" and "(mn2, Store e2 mo2 mn2) \<in> set (node_deliver_messages xs)"
+  shows "e1 = e2"
+proof -
+  obtain pre k where "pre@[Broadcast (mn2, Store e2 mo2 mn2)] prefix of k"
+    using assms delivery_has_a_cause events_before_exist prefix_msg_in_history by blast
+  moreover hence "Deliver (mo2, Add mo2 e2) \<in> set pre \<or> Deliver (mo2, Append e2 mo2) \<in> set pre \<or> Deliver (mo2, Store e2 mo1 mo2) \<in> set pre"
+    using Broadcast_Deliver_prefix_closed3 assms(1) ids_are_unique by blast
+  hence "Deliver (mo2, Store e2 mo1 mo2) \<in> set pre" using assms(1) assms(2) assms(3) 
+  	by (smt calculation fst_conv network.delivery_has_a_cause network.msg_id_unique network_axioms operation.distinct(11) operation.distinct(5) prefix_elem_to_carriers prefix_msg_in_history prefix_of_appendD prod.inject)
+  moreover have "Deliver (mn1, Store e1 mo1 mn1) \<in> set (history j)"
+    using assms(2) assms(3) prefix_msg_in_history by blast
+  ultimately show ?thesis
+  	by (metis (no_types, lifting) assms(1) fst_conv network.delivery_has_a_cause network.msg_id_unique network_axioms operation.inject(4) prefix_elem_to_carriers prefix_of_appendD prod.inject)
+qed
 
 corollary (in orset) concurrent_add_remove_independent:
   assumes "\<not> hb (i, Add i e1) (ir, Rem is e2)" and "\<not> hb (ir, Rem is e2) (i, Add i e1)"
@@ -540,6 +676,27 @@ corollary (in orset) concurrent_add_remove_independent:
     and "(i, Add i e1) \<in> set (node_deliver_messages xs)" and "(ir, Rem is e2) \<in> set (node_deliver_messages xs)"
   shows "i \<notin> is"
   using assms ids_imply_messages_same concurrent_add_remove_independent_technical by fastforce
+  	
+corollary (in orset) concurrent_add_store_independent:
+  assumes "\<not> hb (i, Add i e1) (mn, Store e2 mo mn)" and "\<not> hb (mn, Store e2 mo mn) (i, Add i e1)"
+    and "xs prefix of j"
+    and "(i, Add i e1) \<in> set (node_deliver_messages xs)" and "(mn, Store e2 mo mn) \<in> set (node_deliver_messages xs)"
+  shows "i \<noteq> mo"
+  using assms ids_imply_messages_same2 concurrent_add_store_independent_technical by fastforce
+  	
+corollary (in orset) concurrent_append_store_independent:
+  assumes "\<not> hb (m, Append e1 m) (mn, Store e2 mo mn)" and "\<not> hb (mn, Store e2 mo mn) (m, Append e1 m)"
+    and "xs prefix of j"
+    and "(m, Append e1 m) \<in> set (node_deliver_messages xs)" and "(mn, Store e2 mo mn) \<in> set (node_deliver_messages xs)"
+  shows "m \<noteq> mo"
+  using assms ids_imply_messages_same3 concurrent_append_store_independent_technical by fastforce
+  	
+corollary (in orset) concurrent_store_store_independent:
+  assumes "\<not> hb (mn1, Store e1 mo1 mn1) (mn2, Store e2 mo2 mn2)" and "\<not> hb (mn2, Store e2 mo2 mn2) (mn1, Store e1 mo1 mn1)"
+    and "xs prefix of j"
+    and "(mn1, Store e1 mo1 mn1) \<in> set (node_deliver_messages xs)" and "(mn2, Store e2 mo2 mn2) \<in> set (node_deliver_messages xs)"
+  shows "mn1 \<noteq> mo2 \<and> mn2 \<noteq> mo1"
+  using assms ids_imply_messages_same4 concurrent_store_store_independent_technical by metis
   	
 lemma (in orset) concurrent_operations_commute:
   assumes "xs prefix of i"
