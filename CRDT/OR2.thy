@@ -74,7 +74,6 @@ assumes "i \<notin> is" and "case snd s e2 of Some f \<Rightarrow> f \<subseteq>
 shows "(\<langle>Add i e1\<rangle> \<rhd> \<langle>Rem is e2\<rangle>) s = (\<langle>Rem is e2\<rangle> \<rhd> \<langle>Add i e1\<rangle>) s"
 	using assms add_rem_commute3[of "i" "is" "s" "e1"] add_rem_commute2 [of "i" "is" "e1" "e2" "s"]
 	by auto 
-
   	
 lemma rem_rem_commute1:
 	assumes "e1 \<noteq> e2"
@@ -197,7 +196,6 @@ proof
 qed  
 
 lemma add_append_commute:
-	assumes "(snd x) e2 \<noteq> None"
 	shows " (\<langle>Add i e1\<rangle> \<rhd> \<langle>Append e2 m2\<rangle>) x = (\<langle>Append e2 m2\<rangle> \<rhd> \<langle>Add i e1\<rangle>) x"
 		unfolding interpret_op_def kleisli_def op_elem_def apply (case_tac "e1=e2") apply simp apply auto
 		apply (simp add: insert_commute) apply (simp add: option.case_eq_if) by (simp add: fun_upd_twist)
@@ -210,15 +208,15 @@ lemma rem_append_commute:
 		apply (case_tac "(snd x e2) = None", simp) apply auto using assms apply simp 
 		apply (simp add: insert_Diff_if) using assms apply simp 
 		apply (simp add: Diff_eq option.case_eq_if)
-			by (smt Diff_eq Diff_eq_empty_iff bind.bind_lunit fst_conv fun_upd_apply fun_upd_upd option.discI option.sel snd_conv subset_trans)
-		  
+			by (smt Diff_eq Diff_eq_empty_iff bind.bind_lunit fst_conv fun_upd_apply fun_upd_upd option.discI option.sel snd_conv subset_trans)		  
 			
 lemma store_store_commute:
-	assumes "mn1 \<noteq> mo1" and "mn1 \<noteq> mo2" and "mn2 \<noteq> mo1" and "mn2 \<noteq> mo2"
+	assumes  "mn1 \<noteq> mo2" and "mn2 \<noteq> mo1"
 shows " (\<langle>Store e1 mo1 mn1\<rangle> \<rhd> \<langle>Store e2 mo2 mn2\<rangle>) x = (\<langle>Store e2 mo2 mn2\<rangle> \<rhd> \<langle>Store e1 mo1 mn1\<rangle>) x"
 	unfolding interpret_op_def kleisli_def op_elem_def apply (case_tac "e1\<noteq>e2") apply simp apply auto using assms
 		apply (simp add: fun_upd_twist) 
-	using assms(2) assms(3) apply fastforce by (smt Diff_disjoint Diff_insert Int_Diff assms(2) assms(3) insert_Diff_if insert_commute option.case_eq_if option.simps(5) singletonD)
+	using assms(1) assms(2) apply fastforce	 
+  by (smt Diff_disjoint Diff_insert Int_Diff assms(1) assms(2) insert_Diff_if insert_commute option.case_eq_if option.simps(5) singletonD)
 		
 lemma store_add_commute:
 assumes "i \<noteq> mo2"
@@ -419,11 +417,10 @@ using assms proof (induct es arbitrary: f rule: rev_induct, force)
       	qed
   qed
     
-    
 lemma (in orset) Deliver_added_ids:
   assumes "xs prefix of j"
     and "i \<in> set (added_ids xs e)"
-  shows "Deliver (i, Add i e) \<in> set xs"
+  shows "Deliver (i, Add i e) \<in> set xs \<or> Deliver (i, Append e i) \<in> set xs \<or> Deliver (i, Store e mo i) \<in> set xs"
 using assms proof (induct xs rule: rev_induct, clarsimp)
   case (snoc x xs) thus ?case
   proof (cases x, force)
@@ -434,15 +431,35 @@ using assms proof (induct xs rule: rev_induct, clarsimp)
        apply (metis added_ids_Deliver_Add_diff_collapse added_ids_Deliver_Add_same_collapse
               empty_iff list.set(1) set_ConsD add_id_valid in_set_conv_decomp prefix_of_appendD)
        apply force
-        sorry
+       using added_ids_Deliver_Append_diff_collapse added_ids_Deliver_Append_same_collapse append_id_valid
+      	
+      	 apply (metis (no_types, lifting) Diff_eq_empty_iff Diff_iff Un_iff list.set(1) list.set_intros(1) prefix_of_appendD set_ConsD set_append subset_Compl_singleton)
+      
+     proof -
+     	 fix x41 x42 x43
+     	 	 assume A1: "xs @ [Deliver (a, Store x41 x42 x43)] prefix of j"
+       "i \<in> set (added_ids xs e) \<or> i \<in> set (added_ids [Deliver (a, Store x41 x42 x43)] e)"
+       "b = Store x41 x42 x43 "
+       "x = Deliver (a, Store x41 x42 x43) "
+       "e' = (a, Store x41 x42 x43) "
+       "(xs prefix of j \<Longrightarrow> i \<in> set (added_ids xs e) \<Longrightarrow> False) "
+       "Deliver (i, Add i e) \<notin> set xs "
+       "Deliver (i, Append e i) \<notin> set xs "
+       "Deliver (i, Store e mo i) \<notin> set xs "   
+       have A2: "a = x43" using A1 store_id_valid[of "xs @ [Deliver (a, Store x41 x42 x43)]" "j" "a" "x41" "x42" "x43"]
+       	 by auto
+       have "xs prefix of j" using A1 by auto
+       show " i = a \<and> e = x41 \<and> mo = x42 \<and> i = x43" using A1 A2 added_ids_Deliver_Store_diff_collapse sorry
+       	 	 	 
+       	 		 qed
        (*done *) 
   qed
 qed
 
 lemma (in orset) Broadcast_Deliver_prefix_closed:
-  assumes "xs @ [Broadcast (r, Rem ix e m)] prefix of j"
+  assumes "xs @ [Broadcast (r, Rem ix e)] prefix of j"
     and "i \<in> ix"
-  shows "Deliver (i, Add i e) \<in> set xs"
+  shows "Deliver (i, Add i e) \<in> set xs \<or> Deliver (i, Append e i) \<in> set xs \<or> Deliver (i, Store e mo i) \<in> set xs"
 proof -  
   obtain y where "apply_operations xs = Some y"
     using assms broadcast_only_valid_msgs by blast
@@ -455,21 +472,33 @@ qed
 
 lemma (in orset) Broadcast_Deliver_prefix_closed2:
   assumes "xs prefix of j"
-    and "Broadcast (r, Rem ix e m) \<in> set xs"
+    and "Broadcast (r, Rem ix e) \<in> set xs"
     and "i \<in> ix"
-  shows "Deliver (i, Add i e) \<in> set xs"
-using assms Broadcast_Deliver_prefix_closed by (induction xs rule: rev_induct; force)
+  shows "Deliver (i, Add i e) \<in> set xs \<or> Deliver (i, Append e i) \<in> set xs \<or> Deliver (i, Store e mo i) \<in> set xs"
+  using assms Broadcast_Deliver_prefix_closed by (induction xs rule: rev_induct; force)
+  	
+lemma (in orset) ids_are_unique:
+    assumes "xs prefix of j"
+    and "(i, Add i e1) \<in> set (node_deliver_messages xs)" 
+    and "(l, Append e2 l) \<in> set (node_deliver_messages xs)"
+    and "(k, Store e3 mo k) \<in> set (node_deliver_messages xs)"
+  shows "i \<noteq> k \<and> l \<noteq> k \<and> i \<noteq> l"
+  	using assms delivery_has_a_cause events_before_exist prefix_msg_in_history
+  	by (metis fst_conv msg_id_unique operation.distinct(11) operation.distinct(3) operation.distinct(5) prod.inject)
 
 lemma (in orset) concurrent_add_remove_independent_technical:
   assumes "i \<in> is"
     and "xs prefix of j"
-    and "(i, Add i e) \<in> set (node_deliver_messages xs)" and "(ir, Rem is e m) \<in> set (node_deliver_messages xs)"
-  shows "hb (i, Add i e) (ir, Rem is e m)"
+    and "(i, Add i e) \<in> set (node_deliver_messages xs)" and "(ir, Rem is e) \<in> set (node_deliver_messages xs)"
+  shows "hb (i, Add i e) (ir, Rem is e)"
 proof -
-  obtain pre k where "pre@[Broadcast (ir, Rem is e m)] prefix of k"
+  obtain pre k where "pre@[Broadcast (ir, Rem is e)] prefix of k"
     using assms delivery_has_a_cause events_before_exist prefix_msg_in_history by blast
-  moreover hence "Deliver (i, Add i e) \<in> set pre"
-    using Broadcast_Deliver_prefix_closed assms(1) by auto
+  moreover hence "Deliver (i, Add i e) \<in> set pre \<or> Deliver (i, Append e i) \<in> set pre \<or> Deliver (i, Store e mo i) \<in> set pre"
+    using Broadcast_Deliver_prefix_closed[of "pre" "ir" "is" "e" "k" "i" "mo"] assms(1) by auto
+    	
+  hence "Deliver (i, Add i e) \<in> set pre" using assms(2) assms(3) ids_are_unique[of "xs" j i e i e i e mo]
+  	by (smt calculation fst_conv network.delivery_has_a_cause network.msg_id_unique network_axioms prefix_elem_to_carriers prefix_msg_in_history prefix_of_appendD)
   ultimately show ?thesis
     using hb.intros(2) events_in_local_order by blast
 qed
@@ -489,13 +518,15 @@ qed
 lemma (in orset) ids_imply_messages_same:
   assumes "i \<in> is"
     and "xs prefix of j"
-    and "(i, Add i e1) \<in> set (node_deliver_messages xs)" and "(ir, Rem is e2 m) \<in> set (node_deliver_messages xs)"
+    and "(i, Add i e1) \<in> set (node_deliver_messages xs)" and "(ir, Rem is e2) \<in> set (node_deliver_messages xs)"
   shows "e1 = e2"
 proof -
-  obtain pre k where "pre@[Broadcast (ir, Rem is e2 m)] prefix of k"
+  obtain pre k where "pre@[Broadcast (ir, Rem is e2)] prefix of k"
     using assms delivery_has_a_cause events_before_exist prefix_msg_in_history by blast
-  moreover hence "Deliver (i, Add i e2) \<in> set pre"
-    using Broadcast_Deliver_prefix_closed assms(1) by blast
+  moreover hence "Deliver (i, Add i e2) \<in> set pre \<or> Deliver (i, Append e2 i) \<in> set pre \<or> Deliver (i, Store e2 mo i) \<in> set pre"
+    using Broadcast_Deliver_prefix_closed assms(1) ids_are_unique by blast
+  hence "Deliver (i, Add i e2) \<in> set pre" using assms(1) assms(2) assms(3)
+  	by (smt calculation fst_conv network.delivery_has_a_cause network.msg_id_unique network_axioms operation.simps(10) operation.simps(8) prefix_elem_to_carriers prefix_msg_in_history prefix_of_appendD prod.simps(1))
   moreover have "Deliver (i, Add i e1) \<in> set (history j)"
     using assms(2) assms(3) prefix_msg_in_history by blast
   ultimately show ?thesis
@@ -504,11 +535,11 @@ proof -
 qed
 
 corollary (in orset) concurrent_add_remove_independent:
-  assumes "\<not> hb (i, Add i e1) (ir, Rem is e2 m)" and "\<not> hb (ir, Rem is e2 m) (i, Add i e1)"
+  assumes "\<not> hb (i, Add i e1) (ir, Rem is e2)" and "\<not> hb (ir, Rem is e2) (i, Add i e1)"
     and "xs prefix of j"
-    and "(i, Add i e1) \<in> set (node_deliver_messages xs)" and "(ir, Rem is e2 m) \<in> set (node_deliver_messages xs)"
+    and "(i, Add i e1) \<in> set (node_deliver_messages xs)" and "(ir, Rem is e2) \<in> set (node_deliver_messages xs)"
   shows "i \<notin> is"
-  using assms ids_imply_messages_same concurrent_add_remove_independent_technical by fastforce  
+  using assms ids_imply_messages_same concurrent_add_remove_independent_technical by fastforce
   	
 lemma (in orset) concurrent_operations_commute:
   assumes "xs prefix of i"
