@@ -39,7 +39,9 @@ definition interpret_op :: "('id, 'a) operation \<Rightarrow> ('id, 'a) state \<
 					 Append e m \<Rightarrow> (case snd state e of None \<Rightarrow> Some {m} | Some f \<Rightarrow> Some (insert m f)) |
 					 Store e mo mn \<Rightarrow> (case snd state e of None \<Rightarrow> Some {mn} | Some f \<Rightarrow> Some (insert mn (f - {mo})))
      in  Some ((fst state) ((op_elem oper) := metadata), (snd state) ((op_elem oper) := filesystem))"
-  
+
+
+
 definition valid_behaviours :: "('id, 'a) state \<Rightarrow> 'id \<times> ('id, 'a) operation \<Rightarrow> bool" where
   "valid_behaviours state msg \<equiv>
      case msg of
