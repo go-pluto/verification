@@ -64,21 +64,21 @@ shows " (\<langle>Add i e1\<rangle> \<rhd> \<langle>Rem is e2\<rangle>) s = (\<l
  
 lemma add_rem_commute3:
 fixes s
-assumes "i \<notin> is" and "case snd s e of Some f \<Rightarrow> f \<subseteq> fst s e"
+assumes "i \<notin> is" and "case snd s e of Some f \<Rightarrow> f \<subseteq> fst s e | _ \<Rightarrow> True"
 shows " (\<langle>Add i e\<rangle> \<rhd> \<langle>Rem is e\<rangle>) s = (\<langle>Rem is e\<rangle> \<rhd> \<langle>Add i e\<rangle>) s"
   unfolding interpret_op_def op_elem_def kleisli_def using assms apply simp apply (case_tac "snd s e = None") apply simp apply fastforce
   	apply simp
   by (smt Diff_eq_empty_iff bind_eq_Some_conv dual_order.trans fst_conv fun_upd_same fun_upd_upd insertI1 insert_Diff_if option.simps(4) option.simps(5) snd_conv subset_Compl_singleton)
   	
 lemma (in orset) add_rem_commute:
-assumes "i \<notin> is" and "case snd s e2 of Some f \<Rightarrow> f \<subseteq> fst s e2"
+assumes "i \<notin> is" and "case snd s e2 of Some f \<Rightarrow> f \<subseteq> fst s e2 | _ \<Rightarrow> True"
 shows "(\<langle>Add i e1\<rangle> \<rhd> \<langle>Rem is e2\<rangle>) s = (\<langle>Rem is e2\<rangle> \<rhd> \<langle>Add i e1\<rangle>) s"
 	using assms add_rem_commute3[of "i" "is" "s" "e1"] add_rem_commute2 [of "i" "is" "e1" "e2" "s"]
 	by auto 
   	
 lemma rem_rem_commute1:
 	assumes "e1 \<noteq> e2"
-	shows " (\<langle>Rem i1 e1\<rangle> \<rhd> \<langle>Rem i2 e2\<rangle>) s = (\<langle>Rem i2 e2\<rangle> \<rhd> \<langle>Rem i1 e1\<rangle>) s"
+	shows " (\<langle>Rem i1 e1\<rangle> \<rhd> \<langle>Rem i2 e2\<rangle>) s = (\<langle>Rem i2 e2\<rangle> \<rhd> \<langle>Rem i1 e1\<rangle>) s "
 	unfolding interpret_op_def kleisli_def op_elem_def apply (case_tac "snd s e1 = None", simp) 
 	 apply (smt assms bind_eq_Some_conv fst_conv fun_upd_other fun_upd_twist option.simps(4) snd_conv) apply simp
 proof clarify
@@ -196,13 +196,17 @@ proof
 		by (simp add: fun_upd_twist insert_commute option.case_eq_if)
 qed  
 
-lemma add_append_commute:
+lemma add_append_commute2:
 	shows " (\<langle>Add i e1\<rangle> \<rhd> \<langle>Append e2 m2\<rangle>) x = (\<langle>Append e2 m2\<rangle> \<rhd> \<langle>Add i e1\<rangle>) x"
 		unfolding interpret_op_def kleisli_def op_elem_def apply (case_tac "e1=e2") apply simp apply auto
-		apply (simp add: insert_commute) apply (simp add: option.case_eq_if) by (simp add: fun_upd_twist)
+			apply (simp add: insert_commute) apply (simp add: option.case_eq_if) by (simp add: fun_upd_twist)
+			
+lemma add_append_commute:
+	shows " (\<langle>Add i e1\<rangle> \<rhd> \<langle>Append e2 m2\<rangle>) = (\<langle>Append e2 m2\<rangle> \<rhd> \<langle>Add i e1\<rangle>)"
+	using add_append_commute2 proof qed
 			
 lemma rem_append_commute:
-	assumes  "m2 \<notin> is" and "case snd x e2 of Some f \<Rightarrow> f \<subseteq> fst x e2"
+	assumes  "m2 \<notin> is" and "case snd x e2 of Some f \<Rightarrow> f \<subseteq> fst x e2 | _ \<Rightarrow> True" 
 	shows " (\<langle>Rem is e1\<rangle> \<rhd> \<langle>Append e2 m2\<rangle>) x = (\<langle>Append e2 m2\<rangle> \<rhd> \<langle>Rem is e1\<rangle>) x"
 		unfolding interpret_op_def kleisli_def op_elem_def apply (case_tac "e1 \<noteq> e2", simp) apply auto
 		 apply (smt bind_eq_Some_conv fst_conv fun_upd_other fun_upd_twist snd_conv) using assms 
@@ -228,7 +232,7 @@ shows " (\<langle>Add i e1\<rangle> \<rhd> \<langle>Store e2 mo2 mn2\<rangle>) x
 	by (simp add: fun_upd_twist)
 
 lemma store_rem_commute:
-	assumes "mn2 \<notin> is" and "case snd x e1 of Some f \<Rightarrow> f \<subseteq> fst x e1"
+	assumes "mn2 \<notin> is" and "case snd x e1 of Some f \<Rightarrow> f \<subseteq> fst x e1 | _ \<Rightarrow> True"
 shows " (\<langle>Rem is e1\<rangle> \<rhd> \<langle>Store e2 mo2 mn2\<rangle>) x = (\<langle>Store e2 mo2 mn2\<rangle> \<rhd> \<langle>Rem is e1\<rangle>) x"
 	unfolding interpret_op_def kleisli_def op_elem_def apply (case_tac "e1\<noteq>e2") apply simp apply auto
 	using assms 
@@ -291,6 +295,32 @@ using assms proof(induction xs rule: rev_induct, clarsimp)
   next
     case (Deliver e) thus ?thesis
       using snoc by (simp, metis (no_types, lifting) bind.simps(2) interp_msg_def interpret_op_def prefix_of_appendD)
+  qed
+qed
+
+
+lemma (in orset) apply_operations_invariant:
+  assumes "xs prefix of i"
+  and	"apply_operations xs = Some g"
+  shows "case snd g e1 of Some f \<Rightarrow> f \<subseteq> fst g e1 | _ \<Rightarrow> True"
+using assms proof (induct xs arbitrary: g rule: rev_induct, force)
+  case (snoc x xs) thus ?case
+  proof (cases x)
+    case (Broadcast e) 
+    thus ?thesis using snoc apply simp using snoc apply simp by blast
+  next
+    case (Deliver e)
+    moreover obtain a b where "e = (a, b)" by force
+    ultimately show ?thesis 
+      using snoc apply(case_tac b; clarsimp simp: interp_msg_def split: bind_splits)
+      	 apply (simp add: op_elem_def interpret_op_def)
+      	apply (simp add: Diff_subset empty_subsetI fst_conv fun_upd_other fun_upd_same insertI1 insert_Diff_if insert_Diff_single insert_absorb insert_eq_iff option.case_eq_if option.sel prefix_of_appendD snd_conv subset_Compl_singleton subset_trans)
+      	 apply (smt empty_iff fst_conv fun_upd_other fun_upd_same insertI2 option.discI option.sel snd_conv subset_iff)
+      	apply (smt Diff_iff fst_conv fun_upd_other fun_upd_same interpret_op_def op_elem_def operation.case(2) option.case_eq_if option.sel prefix_of_appendD snd_conv subset_iff)
+      	unfolding interpret_op_def apply simp
+      	 apply (smt fst_conv fun_upd_other fun_upd_same insertE insertI1 insertI2 op_elem_def operation.simps(19) option.case_eq_if option.sel prefix_of_appendD singletonD snd_conv subset_iff)
+      	  apply (simp add:  op_elem_def prefix_of_appendD subsetCE)        	apply (simp add: Diff_subset empty_subsetI fst_conv fun_upd_other fun_upd_same insertI1 insert_Diff_if insert_Diff_single insert_absorb insert_eq_iff option.case_eq_if option.sel prefix_of_appendD snd_conv subset_Compl_singleton subset_trans)
+      	  by (smt Diff_iff empty_subsetI fst_conv fun_upd_other fun_upd_same insert_iff insert_subset option.discI option.sel snd_conv subset_iff)
   qed
 qed
 
@@ -791,8 +821,10 @@ corollary (in orset) concurrent_store_remove_independent:
     and "(mn1, Store e1 mo1 mn1) \<in> set (node_deliver_messages xs)" and "(ir, Rem is e2) \<in> set (node_deliver_messages xs)"
   shows "mn1 \<notin> is"
   using assms ids_imply_messages_same6 concurrent_store_remove_independent_technical by fastforce
-  	
-lemma (in orset) concurrent_operations_commute:
+ 
+
+	
+lemma (in orset) concurrent_operations_commute2:
   assumes "xs prefix of i"
   shows "hb.concurrent_ops_commute (node_deliver_messages xs)"                     
 proof -
@@ -802,8 +834,27 @@ proof -
            "hb.concurrent (a, b) (x, y)"
     hence "interp_msg (a, b) \<rhd> interp_msg (x, y) = interp_msg (x, y) \<rhd> interp_msg (a, b)"
       apply(unfold interp_msg_def, case_tac "b"; case_tac "y"; simp add: add_add_commute rem_rem_commute hb.concurrent_def)
-       apply (metis add_id_valid add_rem_commute assms concurrent_add_remove_independent prefix_contains_msg)+
+       apply (metis add_id_valid add_rem_commute assms concurrent_add_remove_independent hb.concurrentD1 hb.concurrentD2 prefix_contains_msg)+
       done
+  } thus ?thesis
+    by(fastforce simp: hb.concurrent_ops_commute_def)
+qed
+  	
+lemma (in orset) concurrent_operations_commute:
+  assumes "xs prefix of i"
+  shows "hb.concurrent_ops_commute (node_deliver_messages xs)"                       	
+proof -
+	
+  { fix a b x y
+    assume A1: "(a, b) \<in> set (node_deliver_messages xs)"
+           "(x, y) \<in> set (node_deliver_messages xs)"
+           "hb.concurrent (a, b) (x, y)"
+    hence "interp_msg (a, b) \<rhd> interp_msg (x, y) = interp_msg (x, y) \<rhd> interp_msg (a, b)" sorry
+
+
+
+
+      
   } thus ?thesis
     by(fastforce simp: hb.concurrent_ops_commute_def)
 qed
