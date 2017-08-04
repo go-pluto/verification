@@ -123,11 +123,23 @@ proof -
   thus ?thesis
     by(simp add: valid_behaviours_def)
 qed
+	
+lemma (in orset) expunge_id_valid:
+  assumes "xs prefix of j"
+    and "Deliver (i1, Expunge e mo i2) \<in> set xs"
+  shows "i1 = i2"
+proof -
+  have "\<exists>s. valid_behaviours s (i1, Expunge e mo i2)"
+    using assms deliver_in_prefix_is_valid by blast
+  thus ?thesis
+    by(simp add: valid_behaviours_def)
+qed
 
 definition (in orset) added_ids :: "('id \<times> ('id, 'b) operation) event list \<Rightarrow> 'b \<Rightarrow> 'id list" where
   "added_ids es p \<equiv> List.map_filter (\<lambda>x. case x of 
 		Deliver (i, Add j e) \<Rightarrow> if e = p then Some j else None | 
 		Deliver (i, Append j e) \<Rightarrow> if e = p then Some j else None |
+    Deliver (i, Expunge e mo j) \<Rightarrow> if e = p then Some j else None |
 		_ \<Rightarrow> None) es"
  
 -- {* added ids simplifier *}
@@ -155,6 +167,10 @@ lemma (in orset) added_ids_Deliver_Add_diff_collapse [simp]:
 lemma (in orset) added_ids_Deliver_Append_diff_collapse [simp]:
   shows "e \<noteq> e' \<Longrightarrow> added_ids ([Deliver (i, Append j e)]) e' = []"
   by (auto simp: added_ids_def map_filter_append map_filter_def)
+  	
+lemma (in orset) added_ids_Deliver_Expunge_diff_collapse [simp]:
+  shows "e \<noteq> e' \<Longrightarrow> added_ids ([Deliver (i, Expunge e mo j)]) e' = []"
+  by (auto simp: added_ids_def map_filter_append map_filter_def)
     
 lemma (in orset) added_ids_Deliver_Add_same_collapse [simp]:
   shows "added_ids ([Deliver (i, Add j e)]) e = [j]"
@@ -163,9 +179,25 @@ lemma (in orset) added_ids_Deliver_Add_same_collapse [simp]:
 lemma (in orset) added_ids_Deliver_Append_same_collapse [simp]:
   shows "added_ids ([Deliver (i, Append j e)]) e = [j]"
   by (auto simp: added_ids_def map_filter_append map_filter_def)
+  	
+lemma (in orset) added_ids_Deliver_Expunge_same_collapse [simp]:
+  shows "added_ids ([Deliver (i, Expunge e mo j)]) e = [j]"
+  by (auto simp: added_ids_def map_filter_append map_filter_def)
 
+  	(* 
 lemma (in orset) added_id_not_in_set:
   assumes "i1 \<notin> set (added_ids [Deliver (i, Add i2 e)] e)"
+  shows "i1 \<noteq> i2"
+  using assms by simp
+  	
+lemma (in orset) appended_id_not_in_set:
+  assumes "i1 \<notin> set (added_ids [Deliver (i, Append i2 e)] e)"
+  shows "i1 \<noteq> i2"
+  using assms by simp
+ *) 	
+ 		
+lemma (in orset) expunge_id_not_in_set:
+  assumes "i1 \<notin> set (added_ids [Deliver (i, Expunge e mo i2)] e)"
   shows "i1 \<noteq> i2"
   using assms by simp
 
@@ -184,41 +216,49 @@ using assms proof (induct es arbitrary: f rule: rev_induct, force)
   qed
 qed
 	
-(* 
-lemma (in orset) apply_operations_added_files:
-  assumes "es prefix of j"
-    and "apply_operations es = Some f"
-  shows "snd (f x) \<subseteq> set (added_ids es x)"
-  using assms proof (induct es arbitrary: f rule: rev_induct, force)
-  case (snoc x xs) 
-  thus ?case
-  proof (cases x, force)
-    case (Deliver e)
-    moreover obtain a b where "e = (a, b)" by force           
-    ultimately show ?thesis
-      using snoc sorry
-  qed
-qed
-	
-*)
+lemma (in orset) single_expunge:
+  assumes "xs prefix of j"
+    and "i \<in> set (added_ids xs e)"
+    and "Deliver (i, Expunge e mo i) \<in> set xs"
+    and "Deliver (i, Expunge e mo2 i) \<in> set xs"
+  shows "mo = mo2"
+  	sorry
 
 lemma (in orset) Deliver_added_ids:
   assumes "xs prefix of j"
     and "i \<in> set (added_ids xs e)"
-  shows "Deliver (i, Add i e) \<in> set xs \<or> Deliver (i, Append i e) \<in> set xs"
+  shows "Deliver (i, Add i e) \<in> set xs \<or> Deliver (i, Append i e) \<in> set xs \<or> Deliver (i, Expunge e mo i) \<in> set xs"
 using assms proof (induct xs rule: rev_induct, clarsimp)
   case (snoc x xs) thus ?case
   proof (cases x, force)
-    case (Deliver e')
+    case X: (Deliver e')
     moreover obtain a b where "e' = (a, b)" by force
     ultimately show ?thesis
-      using snoc apply (case_tac b; clarsimp)
-       apply (metis added_ids_Deliver_Add_diff_collapse added_ids_Deliver_Add_same_collapse
+      using snoc apply (case_tac b; clarify)
+       apply (simp,metis added_ids_Deliver_Add_diff_collapse added_ids_Deliver_Add_same_collapse
               empty_iff list.set(1) set_ConsD add_id_valid in_set_conv_decomp prefix_of_appendD)
        apply force using added_ids_Deliver_Append_diff_collapse added_ids_Deliver_Append_same_collapse append_id_valid
       	
-      	 apply (metis (no_types, lifting) Diff_eq_empty_iff Diff_iff Un_iff list.set(1) list.set_intros(1) prefix_of_appendD set_ConsD set_append subset_Compl_singleton)
-      done  
+       apply (simp, metis (no_types, lifting) Diff_eq_empty_iff Diff_iff Un_iff list.set(1) list.set_intros(1) prefix_of_appendD set_ConsD set_append subset_Compl_singleton)
+
+    proof (clarsimp)
+    	fix x41 x42 x43
+    		assume A1: "i \<in> set (added_ids xs e) \<or> i \<in> set (added_ids [Deliver (a, Expunge x41 x42 x43)] e)"
+       "(xs prefix of j \<Longrightarrow> i \<in> set (added_ids xs e) \<Longrightarrow> Deliver (i, Append i e) \<in> set xs)"
+       "xs @ [Deliver (a, Expunge x41 x42 x43)] prefix of j"
+       "x = Deliver (a, Expunge x41 x42 x43)"
+       "e' = (a, Expunge x41 x42 x43)"
+       "b = Expunge x41 x42 x43"
+       "Deliver (i, Add i e) \<notin> set xs" "(mo = x42 \<longrightarrow> e = x41 \<longrightarrow> i = a \<longrightarrow> a \<noteq> x43)" "Deliver (i, Expunge e mo i) \<notin> set xs "       
+       
+       hence "i \<in> set (added_ids xs e)" using snoc apply (case_tac "mo = x42") 
+       		apply (metis Un_iff added_ids_Deliver_Expunge_diff_collapse added_ids_Deliver_Expunge_same_collapse empty_iff expunge_id_valid list.set(1) list.set_intros(1) set_ConsD set_append)
+       		 apply (case_tac "e \<noteq> x41") 
+       	 apply simp apply (case_tac "i \<noteq> a") apply simp
+       	 apply (metis Un_iff expunge_id_valid list.set_intros(1) set_append) apply (case_tac "a \<noteq> x43") apply simp using expunge_id_not_in_set using single_expunge
+      	thus "Deliver (i, Append i e) \<in> set xs" using snoc
+      		using A1(2) by blast
+      qed
   qed
 qed
 

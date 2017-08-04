@@ -15,12 +15,12 @@ imports
   Network
 begin
 
-datatype ('id, 'a) operation = Add "'id" "'a" | Rem "'id set" "'a"
+datatype ('id, 'a) operation = Add "'id" "'a" | Rem "'id set" "'a" | Append "'id" "'a"
 
 type_synonym ('id, 'a) state = "'a \<Rightarrow> ('id set \<times> 'id set)"
 
 definition op_elem :: "('id, 'a) operation \<Rightarrow> 'a" where
-  "op_elem oper \<equiv> case oper of Add i e \<Rightarrow> e | Rem is e \<Rightarrow> e"
+  "op_elem oper \<equiv> case oper of Add i e \<Rightarrow> e | Rem is e \<Rightarrow> e | Append i e \<Rightarrow> e"
 
 definition interpret_op :: "('id, 'a) operation \<Rightarrow> ('id, 'a) state \<rightharpoonup> ('id, 'a) state" ("\<langle>_\<rangle>" [0] 1000) where
   "interpret_op oper state \<equiv>
@@ -28,14 +28,16 @@ definition interpret_op :: "('id, 'a) operation \<Rightarrow> ('id, 'a) state \<
 				 files = snd (state (op_elem oper));
          after  = case oper of 
 				   Add i e \<Rightarrow> (metadata \<union> {i}, files) |
-					 Rem is e \<Rightarrow> (metadata - is, files - is)
+					 Rem is e \<Rightarrow> (metadata - is, files - is) |
+					 Append i e \<Rightarrow> (metadata, files \<union> {i})
      in  Some (state ((op_elem oper) := after))"
   
 definition valid_behaviours :: "('id, 'a) state \<Rightarrow> 'id \<times> ('id, 'a) operation \<Rightarrow> bool" where
   "valid_behaviours state msg \<equiv>
      case msg of
        (i, Add j  e) \<Rightarrow> i = j |
-       (i, Rem is e) \<Rightarrow> is = fst (state e) \<union> snd (state e)"
+       (i, Rem is e) \<Rightarrow> is = fst (state e) \<union> snd (state e) |
+			 (i, Append j e) \<Rightarrow> i = j"
 
 locale orset = network_with_constrained_ops _ interpret_op "\<lambda>x. ({},{})" valid_behaviours
 
@@ -47,6 +49,23 @@ lemma (in orset) add_rem_commute:
   assumes "i \<notin> is"
   shows "\<langle>Add i e1\<rangle> \<rhd> \<langle>Rem is e2\<rangle> = \<langle>Rem is e2\<rangle> \<rhd> \<langle>Add i e1\<rangle>"
   using assms by(auto simp add: interpret_op_def kleisli_def op_elem_def, fastforce)
+  	
+lemma (in orset) add_append_commute:
+  shows "\<langle>Add i1 e1\<rangle> \<rhd> \<langle>Append i2 e2\<rangle> = \<langle>Append i2 e2\<rangle> \<rhd> \<langle>Add i1 e1\<rangle>"
+  by(auto simp add: interpret_op_def op_elem_def kleisli_def, fastforce)
+  	
+lemma (in orset) rem_rem_commute:
+  shows "\<langle>Rem i1 e1\<rangle> \<rhd> \<langle>Rem i2 e2\<rangle> = \<langle>Rem i2 e2\<rangle> \<rhd> \<langle>Rem i1 e1\<rangle>"
+  by(unfold interpret_op_def op_elem_def kleisli_def, fastforce)
+  
+lemma (in orset) rem_append_commute:
+	assumes "i \<notin> is"
+  shows "\<langle>Rem is e1\<rangle> \<rhd> \<langle>Append i e2\<rangle> = \<langle>Append i e2\<rangle> \<rhd> \<langle>Rem is e1\<rangle>"
+  using assms by(auto simp add: interpret_op_def kleisli_def op_elem_def, fastforce)
+  	
+lemma (in orset) append_append_commute:
+  shows "\<langle>Append i1 e1\<rangle> \<rhd> \<langle>Append i2 e2\<rangle> = \<langle>Append i2 e2\<rangle> \<rhd> \<langle>Append i1 e1\<rangle>"
+  by(auto simp add: interpret_op_def op_elem_def kleisli_def, fastforce)
 
 lemma (in orset) apply_operations_never_fails:
   assumes "xs prefix of i"
@@ -77,9 +96,14 @@ qed
 definition (in orset) added_ids :: "('id \<times> ('id, 'b) operation) event list \<Rightarrow> 'b \<Rightarrow> 'id list" where
   "added_ids es p \<equiv> List.map_filter (\<lambda>x. case x of Deliver (i, Add j e) \<Rightarrow> if e = p then Some j else None | _ \<Rightarrow> None) es"
   
-  definition (in orset) added_files :: "('id \<times> ('id, 'b) operation) event list \<Rightarrow> 'b \<Rightarrow> 'id list" where
-  "added_files es p \<equiv> []"
+definition (in orset) added_files :: "('id \<times> ('id, 'b) operation) event list \<Rightarrow> 'b \<Rightarrow> 'id list" where
+  "added_files es p \<equiv> List.map_filter (\<lambda>x. case x of Deliver (i, Append j e) \<Rightarrow> if e = p then Some j else None | _ \<Rightarrow> None) es"
 
+  (*
+lemma full_davai [simp]:
+	shows "set (added_ids xs e) \<inter> set (added_files xs e) = {} "
+		unfolding added_ids_def added_files_def map_filter_def  nitpick *)
+  
 -- {* added files simplifier *}
 
 lemma (in orset) [simp]:
@@ -99,12 +123,17 @@ lemma (in orset) added_files_Deliver_Rem_collapse [simp]:
   by (auto simp: added_files_def map_filter_append map_filter_def)
     
 lemma (in orset) added_files_Deliver_Add_diff_collapse [simp]:
-  shows "e \<noteq> e' \<Longrightarrow> added_files ([Deliver (i, Add j e)]) e' = []"
+  shows "e \<noteq> e' \<Longrightarrow> added_files ([Deliver (i, Append j e)]) e' = []"
   by (auto simp: added_files_def map_filter_append map_filter_def)
     
 lemma (in orset) added_files_Deliver_Add_same_collapse [simp]:
-  shows "added_files ([Deliver (i, Add j e)]) e = []"
+  shows "added_files ([Deliver (i, Append j e)]) e = [j]"
   by (auto simp: added_files_def map_filter_append map_filter_def)
+
+lemma (in orset) added_files_not_in_set:
+  assumes "i1 \<notin> set (added_files [Deliver (i, Append i2 e)] e)"
+  shows "i1 \<noteq> i2"
+  using assms by simp
   	
 -- {* added ids simplifier *}
   
@@ -152,6 +181,23 @@ using assms proof (induct es arbitrary: f rule: rev_induct, force)
   qed
 qed
 	
+lemma (in orset) apply_operations_added_files:
+  assumes "es prefix of j"
+    and "apply_operations es = Some f"
+  shows "snd (f x) \<subseteq> set (added_files es x)"
+  using assms proof (induct es arbitrary: f rule: rev_induct, force)
+  case (snoc x xs) 
+  thus ?case
+  proof (cases x, force)
+    case (Deliver e)
+    moreover obtain a b where "e = (a, b)" by force           
+    ultimately show ?thesis
+      using snoc by(case_tac b; clarsimp simp: interp_msg_def split: bind_splits,
+                    force split: if_split_asm simp add: op_elem_def interpret_op_def) 
+  qed
+qed
+	
+	(*
 lemma (in orset) ids_not_files:
   assumes "es prefix of j"
     and "apply_operations es = Some f"
@@ -162,10 +208,10 @@ lemma (in orset) ids_not_files:
   proof (cases x, force)
     case (Deliver e')
     moreover obtain a b where "e' = (a, b)" by force                 
-    ultimately show ?thesis by (metis inf_bot_right orset.added_files_def orset_axioms set_empty)
+    ultimately show ?thesis by (metis inf_bot_right orset.added_ids_def orset.added_files_def orset_axioms set_empty)
       
   qed
-qed 
+qed *)
 
 (*
 lemma (in orset) metadata_not_files:
@@ -184,22 +230,9 @@ lemma (in orset) metadata_not_files:
   qed
 qed *)
 	
-lemma (in orset) metadata_not_files3:
-  assumes "es prefix of j"
-    and "apply_operations es = Some f"
-  shows "snd (f e) \<subseteq> set (added_files es e)"
-  using assms proof (induct es arbitrary: f rule: rev_induct, force)
-  case (snoc x xs) 
-  thus ?case
-  proof (cases x, force)
-    case (Deliver e')
-    moreover obtain a b where "e' = (a, b)" by force           
-    ultimately show ?thesis
-      using snoc by(case_tac b; clarsimp simp: interp_msg_def split: bind_splits,
-                    force split: if_split_asm simp add: op_elem_def interpret_op_def) 
-  qed
-qed
+
 	
+(*	
 lemma (in orset) metadata_not_files2:
   assumes "es prefix of j"
     and "apply_operations es = Some f"
@@ -216,10 +249,10 @@ lemma (in orset) metadata_not_files2:
       have "\<exists> u . apply_operations xs = Some u" using A1 bind_eq_Some_conv snoc(3) by fastforce
     	then obtain r where  R: "apply_operations xs = Some r" by force
       hence A5: "snd (r x12) \<inter> fst (r x12) = {}" using snoc
-      	by (metis added_files_def empty_set inf_bot_right inf_commute le_iff_inf metadata_not_files3 prefix_of_appendD)
+      	apply (simp add: added_files_def empty_set inf_bot_right inf_commute le_iff_inf apply_operations_added_files prefix_of_appendD)
     	hence "interpret_op (Add x11 x12) r = Some f" using snoc A1 B2 R by (simp add: Add interp_msg_def)
     	then show ?thesis unfolding interpret_op_def op_elem_def apply (simp add: Add) using A5
-    		by (metis added_files_def empty_set inf_bot_right inf_commute le_iff_inf metadata_not_files3 snoc(2) snoc(3))
+    		by (metis added_files_def empty_set inf_bot_right inf_commute le_iff_inf apply_operations_added_files snoc(2) snoc(3))
     next
     	case (Rem x21 x22)
     	have "xs prefix of j" using snoc by auto
@@ -232,7 +265,7 @@ lemma (in orset) metadata_not_files2:
     qed
   qed
 qed 
-
+*)
 lemma (in orset) Deliver_added_ids:
   assumes "xs prefix of j"
     and "i \<in> set (added_ids xs e)"
@@ -246,7 +279,7 @@ using assms proof (induct xs rule: rev_induct, clarsimp)
       using snoc apply (case_tac b; clarsimp)
        apply (metis added_ids_Deliver_Add_diff_collapse added_ids_Deliver_Add_same_collapse
               empty_iff list.set(1) set_ConsD add_id_valid in_set_conv_decomp prefix_of_appendD)
-      apply force
+       apply force
       done  
   qed
 qed
@@ -328,10 +361,6 @@ corollary (in orset) concurrent_add_remove_independent:
     and "(i, Add i e1) \<in> set (node_deliver_messages xs)" and "(ir, Rem is e2) \<in> set (node_deliver_messages xs)"
   shows "i \<notin> is"
   using assms ids_imply_messages_same concurrent_add_remove_independent_technical by fastforce
-
-lemma (in orset) rem_rem_commute:
-  shows "\<langle>Rem i1 e1\<rangle> \<rhd> \<langle>Rem i2 e2\<rangle> = \<langle>Rem i2 e2\<rangle> \<rhd> \<langle>Rem i1 e1\<rangle>"
-  by(unfold interpret_op_def op_elem_def kleisli_def, fastforce)
 
 lemma (in orset) concurrent_operations_commute:
   assumes "xs prefix of i"
