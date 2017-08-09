@@ -1,0 +1,10 @@
+chapter AFP
+
+session IMAP-CRDT (AFP) = HOL + CRDT +
+  options [timeout = 600]
+  theories [document = false]
+    "~~/src/Tools/Adhoc_Overloading"
+    "~~/src/HOL/Library/Monad_Syntax"
+    "~~/src/HOL/Library/Code_Target_Numeral"
+  theories
+    ORSet3
