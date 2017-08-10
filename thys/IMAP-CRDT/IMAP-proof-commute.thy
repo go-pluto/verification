@@ -1,3 +1,5 @@
+section {* Commutativity of IMAP Commands *}
+
 theory
   "IMAP-proof-commute"
 imports

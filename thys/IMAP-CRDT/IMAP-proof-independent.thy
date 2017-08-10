@@ -1,3 +1,5 @@
+section {* Independence of IMAP Commands *}
+
 theory
   "IMAP-proof-independent"
 imports

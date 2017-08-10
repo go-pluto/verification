@@ -1,3 +1,5 @@
+section {* Convergence of the IMAP-CRDT *}
+
 theory
   "IMAP-proof"
 imports

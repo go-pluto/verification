@@ -1,3 +1,5 @@
+section {* Proof Helpers *}
+
 theory
   "IMAP-proof-helpers"
 imports

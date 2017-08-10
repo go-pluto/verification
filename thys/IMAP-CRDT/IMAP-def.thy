@@ -1,3 +1,5 @@
+section {* IMAP-CRDT Definitions *}
+
 theory
   "IMAP-def"
 imports
