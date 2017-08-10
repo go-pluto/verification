@@ -1,8 +1,0 @@
-chapter AFP
-session "IMAP" = "HOL" +
-  options [document = pdf, document_output = "output"]
-  theories
-    IMAP_proof
-  document_files
-    "root.tex"
-    "root.bib"
