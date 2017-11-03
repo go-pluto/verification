@@ -11,4 +11,6 @@ In order to create the proof document and the HTML overview, please navigate to 
 
 `$isabelle build -D . -o browser_info -v IMAP`
 
-*written with Isabelle 2016*
+*written with Isabelle 2017*
+
+To use this library, please reference to the AFP as described in https://www.isa-afp.org/using.html

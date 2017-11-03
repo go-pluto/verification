@@ -2,13 +2,15 @@ chapter AFP
 
 session "IMAP-CRDT" (AFP) = HOL +
   options [timeout = 600, document = pdf, document_output = "output", document_variants="document:outline=/proof"]
+  sessions
+    "HOL-Library"
   theories [document = false]
+    "HOL-Library.Adhoc_Overloading"
+    "HOL-Library.Monad_Syntax"
+    "HOL-Library.Code_Target_Numeral"
     "../CRDT/Network"
     "../CRDT/Convergence"
     "../CRDT/Util"
-    "~~/src/Tools/Adhoc_Overloading"
-    "~~/src/HOL/Library/Monad_Syntax"
-    "~~/src/HOL/Library/Code_Target_Numeral"
   theories
     "IMAP-proof"
   document_files
