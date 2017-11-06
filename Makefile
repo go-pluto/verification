@@ -10,5 +10,5 @@ download-isabelle:
 
 .PHONY: build-docs
 build-docs:
-	Isabelle2017/bin/isabelle build -D ./thys/IMAP-CRDT/ -o browser_info -v IMAP-CRDT
+	Isabelle2017/bin/isabelle build -D ./sub/IMAP-CRDT/ -o browser_info -v IMAP-CRDT
 
