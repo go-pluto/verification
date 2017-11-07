@@ -101,7 +101,7 @@ In this work, we present our Isabelle/HOL proof of the necessary properties and
 show that our CmRDT indeed guarantees Strong Eventual Consistency (SEC).
 We contribute not only the certainty that our CmRDT design is correct,
 but also provide one more example of how the verification framework
-can be used to proof the correctness of a CRDT.
+can be used to prove the correctness of a CRDT.
 
 
 \subsection{The IMAP CmRDT}
@@ -168,57 +168,54 @@ detailed description of the CmRDT are provided in the original paper \cite{pluto
 \end{algorithm}
 
 The only notable difference between the presented specification and our Isabelle/HOL
-formalization is, that we no longer distinguish between sets $\texttt{ID}$ and $\mathcal{M}$ and that the
-generated tags of \create\ and \expunge\ are handled explicitly.
-This makes the formalization slightly easier, because less type variables are
-introduced. The concrete definition can be found in the \textit{IMAP-CRDT Definitions}
-section, respectively in the \texttt{IMAP-def.thy} file.
+formalization is, that we no longer distinguish between sets $\texttt{ID}$ and
+$\mathcal{M}$ and that the generated tags of \create\ and \expunge\ are handled
+explicitly. This makes the formalization slightly easier, because less type variables
+are introduced. The concrete definition can be found in the \textit{IMAP-CRDT Definitions}
+section of the \texttt{IMAP-def.thy} file.
+
 
 \subsection{Proof Guide}
 
-\textit{Hint:} In our proof, we build on top of the definitions of
-Gomes et al.\ in \cite{gomes_crdtisabelle}.
-We strongly recommend to read their paper first before following our proof.
-In fact, in our formalization we reuse the \textit{locales} of the proposed framework
-and therefore this work cannot be compiled without the reference to \cite{gomes_crdtafp}.
+\textit{Hint:} In our proof, we build on top of the definitions given by Gomes et al{.}
+in \cite{gomes_crdtisabelle}. We strongly recommend to read their paper first before
+following our proof. In fact, in our formalization we reuse the \textit{locales} of the
+proposed framework and therefore this work cannot be compiled without the reference
+to \cite{gomes_crdtafp}.
 
-Op-based CRDTs require all concurrent operations to commute in order to ensure
-convergence. Therefore we begin our verification by proving the commutativity of every
-combination of possible concurrent operations.
-Initially, we used the \textit{nitpick} to identify corner cases in our implementation.
-We proof the commutativity in section 3, respectively in the \texttt{IMAP-proof-commute.thy} file.
-The most \textit{critical conditions}, that must be satisfied to commute, can be
-summarized as follows:
+Operation-based CRDTs require all concurrent operations to commute in order to ensure
+convergence. Therefore, we begin our verification by proving the commutativity of every
+combination of possible concurrent operations. Initially, we used \textit{nitpick} to
+identify corner cases in our implementation. We prove the commutativity in Section 3
+of the \texttt{IMAP-proof-commute.thy} file. The \textit{critical conditions} to satisfy
+in order to commute, can be summarized as follows:
 \begin{itemize}
   \item The tags of a \create\ and \expunge\ operation or the messages of an
-  \append\ and \store\ operation are never in the removed set of a concurrent
+  \append\ and \store\ operation are never in the removed-set of a concurrent
   \delete\ operation.
   \item The message of an \append\ operation is never the message that is
   deleted by a concurrent \store\ or \expunge\ operation.
-  \item The message that is inserted by a \store\ operation is never the message
+  \item The message inserted by a \store\ operation is never the message
   that is deleted by a concurrent \store\ or \expunge\ operation.
 \end{itemize}
 
-The identified conditions obviously hold in regular traces of our system,
-because an item that has been inserted by one operation cannot be deleted by a
-concurrent operation since the item simply cannot be present at the time of the
-initiation of the concurrent operation.
+The identified conditions obviously hold in regular traces of our system, because
+an item that has been inserted by one operation cannot be deleted by a concurrent
+operation. It simply cannot be present at the time of the initiation of the
+concurrent operation.
 
 Next, we show that the identified conditions actually hold for all concurrent
-operations. Since all tags and all inserted messages are globally unique, it can easily be
-shown that all conditions are satisfied.
-In Isabelle, showing this fact takes some effort.
-Luckily we could reuse parts of the Isabelle implementation of the proof of the
-OR-set from \cite{gomes_crdtafp}. The Isabelle proofs for the critical conditions
-are encapsulated in the \texttt{IMAP-proof-independent.thy} file.
+operations. Because all tags and all inserted messages are globally unique, it can
+easily be shown that all conditions are satisfied. In Isabelle/HOL, showing this fact
+takes some effort. Fortunately, we were able to reuse parts of the Isabelle/HOL implementation
+of the OR-Set proof in \cite{gomes_crdtafp}. The Isabelle/HOL proofs for the
+\textit{critical conditions} are encapsulated in the \texttt{IMAP-proof-independent.thy} file.
 
-With the introduced lemmas, we proof the final theorem that states that
-convergence is guaranteed. Since all operations are commutative if the
-\textit{critical conditions} are
-satisfied and the \textit{critical conditions} hold
-for all concurrent updates, all concurrent
-operations commute.
-The Isabelle proof is encapsulated in the \texttt{IMAP-proof.thy} file.
+With the introduced lemmas, we prove the final theorem that states that convergence
+is guaranteed. Due to all operations being commutative in case the \textit{critical conditions}
+are satisfied and the \textit{critical conditions} indeed are holding for all concurrent updates,
+all concurrent operations commute. The Isabelle/HOL proof is contained in the
+\texttt{IMAP-proof.thy} file.
 
 % sane default for proof documents
 \parindent 0pt\parskip 0.5ex
