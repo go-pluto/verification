@@ -6,8 +6,8 @@ We use the \texttt{network\_with\_constrained\_ops} locale from the framework.\<
 
 theory
   "IMAP-def"
-imports
-  "CRDT.Network"
+  imports
+    "../CRDT/Network"
 begin
 
 datatype ('id, 'a) operation = 
@@ -27,7 +27,8 @@ definition op_elem :: "('id, 'a) operation \<Rightarrow> 'a" where
     Expunge e mo i \<Rightarrow> e | 
     Store e mo i \<Rightarrow> e"
 
-definition interpret_op :: "('id, 'a) operation \<Rightarrow> ('id, 'a) state \<rightharpoonup> ('id, 'a) state" ("\<langle>_\<rangle>" [0] 1000) where
+definition interpret_op :: "('id, 'a) operation \<Rightarrow> ('id, 'a) state \<rightharpoonup> ('id, 'a) state" 
+  ("\<langle>_\<rangle>" [0] 1000) where
   "interpret_op oper state \<equiv>
     let metadata = fst (state (op_elem oper));
         files = snd (state (op_elem oper));
@@ -39,11 +40,12 @@ definition interpret_op :: "('id, 'a) operation \<Rightarrow> ('id, 'a) state \<
           Store e mo i \<Rightarrow> (metadata, insert i (files - {mo}))
     in  Some (state ((op_elem oper) := after))"
 
-text\<open>In the definition of the valid behaviours of the operations, we define additional assumption on the state
-where the operation is executed. In essence, a the tag of a \create, \append, \expunge, and \store\ operation is identical to 
-the message number and therefore unique. A \delete\ operation deletes all metadata and the content of a folder. The \store\ and \expunge\ 
-operations must refer to an existing message.\<close>
-  
+text\<open>In the definition of the valid behaviours of the operations, we define additional assumption 
+the state where the operation is executed. In essence, a the tag of a \create, \append, \expunge,  
+and \store\ operation is identical to the message number and therefore unique. A \delete\ operation 
+deletes all metadata and the content of a folder. The \store\ and \expunge\ operations must refer 
+to an existing message.\<close>
+
 definition valid_behaviours :: "('id, 'a) state \<Rightarrow> 'id \<times> ('id, 'a) operation \<Rightarrow> bool" where
   "valid_behaviours state msg \<equiv>
     case msg of
@@ -54,5 +56,5 @@ definition valid_behaviours :: "('id, 'a) state \<Rightarrow> 'id \<times> ('id,
       (i, Store e mo j) \<Rightarrow> i = j \<and> mo \<in> snd (state e)"
 
 locale imap = network_with_constrained_ops _ interpret_op "\<lambda>x. ({},{})" valid_behaviours
-  
+
 end
