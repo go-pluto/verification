@@ -1,4 +1,5 @@
 \documentclass[11pt,a4paper, DIV=11]{article}
+
 \usepackage[utf8]{inputenc}
 \usepackage[T1]{fontenc}
 \usepackage{fullpage}
@@ -44,71 +45,78 @@
 
 \newcommand{\session}{\textit{session}}
 
-\begin{document}
 
 \title{The IMAP CmRDT}
 \author{Tim Jungnickel, Lennart Oldenburg, Matthias Loibl}
 \date{\today}
+
+
+\begin{document}
+
+
 \maketitle
 
+
 \begin{abstract}
-We provide our Isabelle/HOL formalization of a Conflict-free Replicated Datatype
-for Internet Message Access Protocol commands. To this end, we show that Strong Eventual Consistency (SEC)
-is guaranteed by proving the commutativity of concurrent operations. We base
-our formalization on the recently proposed "framework for establishing Strong Eventual Consistency for Conflict-free Replicated Datatypes" (AFP.CRDT)
-from Gomes et al{.} Hence, we provide an additional example of how the recently
-proposed framework can be used to design and prove CRDTs.
+We provide our Isabelle/HOL formalization of a Conflict-free Replicated Data Type
+for Internet Message Access Protocol commands. To this end, we show that Strong
+Eventual Consistency (SEC) is guaranteed by proving the commutativity of concurrent
+operations. We base our formalization on the recently proposed "framework for
+establishing Strong Eventual Consistency for Conflict-free Replicated Datatypes"
+(AFP.CRDT) by Gomes et al{.} Hence, we provide an additional example of how the
+recently proposed framework can be used to design and prove CRDTs.
 \end{abstract}
+
 
 \tableofcontents
 %\newpage
 
+
 \section{Preface}
 
-A Conflict-free Replicated Datatype (CRDT) \cite{shapiro_crdt} ensures
-convergence of replicas without requiring a central coordination server or even
-a distributed coordination system based on consensus or locking.
-We observe, despite the fact that Shapiro et al{.} provide a comprehensive
-collection of definitions for the most useful types, e.g. registers, sets, and
-lists \cite{shapiro_report}, that the use of CRDTs in standard IT services is rather unusual.
-Therefore, we use the Internet Message Access Protocol (IMAP), the de-facto
-standard protocol to retrieve mails from a mail server, as an example to show
-the feasibility of using CRDTs to replicate a standard IT service to
-planetary-scale.
+A Conflict-free Replicated Data Type (CRDT) \cite{shapiro_crdt} ensures
+convergence of replicas without requiring a central coordination server or
+even a distributed coordination system based on consensus or locking.
+Despite the fact that Shapiro et al{.} provide a comprehensive collection
+of definitions for the most useful data types such as registers, sets, and
+lists \cite{shapiro_report}, we observe that the use of CRDTs in standard IT
+services is rather uncommon. Therefore, we use the Internet Message Access
+Protocol (IMAP)---the de-facto standard protocol to retrieve and manipulate mail
+messages on an email server---as an example to show the feasibility of using
+CRDTs for replicating state of a standard IT service to achieve planetary scale.
 
-Designing a \emph{correct} CRDT is a challenging task.
-A CmRDT, the operation based variant of a CRDT, requires all operations to
-commute.
+Designing a \emph{correct} CRDT is a challenging task. A CmRDT, the
+operation-based variant of a CRDT, requires all operations to commute.
 To this end, Gomes et al{.} recently published a CmRDT verification
 framework \cite{gomes_crdtafp} in Isabelle/HOL.
 
 In our most recent work \cite{pluto}, we presented \emph{pluto}, our research
-prototype of a planetary-scale IMAP server.
-To achieve the claimed planetary-scale, we designed a CmRDT that provides
-multi-leader replication of mailboxes without the need of explicit
-synchronization. In order to ensure the correctness of the proposed CmRDT, we
-implemented our IMAP CmRDT in the verification framework of Gomes et al{.}
+prototype of a planetary-scale IMAP service. To achieve the claimed
+planet-scale, we designed a CmRDT that provides multi-leader replication
+of mailboxes without the need of synchronous operations. In order to ensure
+the correctness of our proposed IMAP CmRDT, we implemented it in the
+verification framework proposed by Gomes et al{.}
 
-In this work, we present our Isabelle proof of the necessary properties and
-show that our CmRDT guarantees Strong Eventual Consistency (SEC).
+In this work, we present our Isabelle/HOL proof of the necessary properties and
+show that our CmRDT indeed guarantees Strong Eventual Consistency (SEC).
 We contribute not only the certainty that our CmRDT design is correct,
-but also we provide one more example of how the verification framework
+but also provide one more example of how the verification framework
 can be used to proof the correctness of a CRDT.
+
 
 \subsection{The IMAP CmRDT}
 
-In the rest of this work, we show how we modeled our IMAP CmRDT in Isabelle.
+In the rest of this work, we show how we modeled our IMAP CmRDT in Isabelle/HOL.
 We start by presenting the original IMAP CmRDT, followed by the implementation
-details of the Isabelle formalization.
-The presentation of our CmRDT in Spec.~\ref{spec:imap} is based on the syntax
-introduced in \cite{shapiro_report}. We highly recommend reading the basics work
-of Shapiro et al{.} first before following our proof documentation.
+details of the Isabelle/HOL formalization. The presentation of our CmRDT in
+Spec.~\ref{spec:imap} is based on the syntax introduced in \cite{shapiro_report}.
+We highly recommend reading the foundational work by Shapiro et al{.} prior to
+following our proof documentation.
 
 In essence, the IMAP CmRDT represents the state of a mailbox, containing folders
-(of type $\mathcal{N}$) and messages (of type $\mathcal{M}$). Moreover we
-introduce metadata in form of tags (of type $\texttt{ID}$).
-All modeling details and a more detailed description of the CmRDT are provided
-in the original paper \cite{pluto}.
+(of type $\mathcal{N}$) and messages (of type $\mathcal{M}$). Moreover, we introduce
+metadata in form of tags (of type $\texttt{ID}$). All modeling details and a more
+detailed description of the CmRDT are provided in the original paper \cite{pluto}.
 
 \begin{algorithm}[t]
   \floatname{algorithm}{Specification}
