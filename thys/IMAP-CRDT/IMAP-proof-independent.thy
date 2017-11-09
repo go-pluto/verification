@@ -198,31 +198,6 @@ proof -
     using hb.intros(2) events_in_local_order by blast
 qed
 
-lemma (in imap) concurrent_append_store_independent_technical:
-  assumes "i = mo"
-    and "xs prefix of j"
-    and "(i, Append i e) \<in> set (node_deliver_messages xs)" 
-    and "(r, Store e mo r) \<in> set (node_deliver_messages xs)"
-  shows "hb (i, Append i e) (r, Store e mo r)"
-proof -
-  obtain pre k where "pre@[Broadcast (r, Store e mo r)] prefix of k"
-    using assms delivery_has_a_cause events_before_exist prefix_msg_in_history by blast
-  moreover hence A: "Deliver (mo, Append mo e) \<in> set pre \<or> (\<exists> mo2 . Deliver (mo, Store e mo2 mo) \<in> set pre)"
-    using Broadcast_Store_Deliver_prefix_closed assms(1) by auto      
-  hence "Deliver (i, Append i e) \<in> set pre" using assms ids_are_unique
-  proof -
-    have f1: "Deliver (i, Append i e) \<in> set (history j)"
-      by (meson assms network.prefix_msg_in_history network_axioms)
-    obtain aa :: 'a where
-      "Deliver (i, Append i e) \<in> set pre \<or> Deliver (i, Store e aa i) \<in> set pre"
-      using A assms by blast
-    then show ?thesis
-      using f1 by (metis (no_types) calculation delivery_has_a_cause fst_conv msg_id_unique prefix_elem_to_carriers prefix_of_appendD)
-  qed
-  ultimately show ?thesis
-    using hb.intros(2) events_in_local_order by blast
-qed
-
 lemma (in imap) concurrent_store_delete_independent_technical:
   assumes "i \<in> is"
     and "xs prefix of j"
@@ -232,9 +207,14 @@ lemma (in imap) concurrent_store_delete_independent_technical:
 proof -
   obtain pre k where P: "pre@[Broadcast (ir, Delete is e)] prefix of k"
     using assms delivery_has_a_cause events_before_exist prefix_msg_in_history by blast
-  moreover hence A: "Deliver (i, Create i e) \<in> set pre \<or> Deliver (i, Append i e) \<in> set pre \<or> (\<exists> mo . Deliver (i, Expunge e mo i) \<in> set pre) \<or> (\<exists> mo . Deliver (i, Store e mo i) \<in> set pre)"
+  moreover hence A: "Deliver (i, Create i e) \<in> set pre \<or> 
+  Deliver (i, Append i e) \<in> set pre \<or>
+  (\<exists> mo . Deliver (i, Expunge e mo i) \<in> set pre) \<or> 
+  (\<exists> mo . Deliver (i, Store e mo i) \<in> set pre)"
     using Broadcast_Deliver_prefix_closed assms(1) by auto      
   hence "Deliver (i, Store e mo i) \<in> set pre" using assms ids_are_unique P 
+
+
   proof -
     have "pre prefix of k"
       using calculation by blast
@@ -255,40 +235,6 @@ proof -
       using f3 f1 by blast
     then show ?thesis
       using f4 by (metis (no_types) A fst_conv msg_id_unique)
-  qed      
-  ultimately show ?thesis
-    using hb.intros(2) events_in_local_order by blast
-qed
-
-lemma (in imap) concurrent_store_expunge_independent_technical:
-  assumes "xs prefix of j"
-    and "(i, Store e mo i) \<in> set (node_deliver_messages xs)" 
-    and "(r, Expunge e i r) \<in> set (node_deliver_messages xs)"
-  shows "hb (i, Store e mo i) (r, Expunge e i r)"
-proof -
-  obtain pre k where "pre@[Broadcast (r, Expunge e i r)] prefix of k"
-    using assms delivery_has_a_cause events_before_exist prefix_msg_in_history by blast
-  moreover hence A: "Deliver (i, Append i e) \<in> set pre \<or> (\<exists> mo2 . Deliver (i, Store e mo2 i) \<in> set pre)"
-    using Broadcast_Expunge_Deliver_prefix_closed assms(1) by auto      
-  hence "Deliver (i, Store e mo i) \<in> set pre" using assms ids_are_unique
-  proof -
-    obtain aa :: 'a where
-      f1: "Deliver (i, Append i e) \<in> set pre \<or> Deliver (i, Store e aa i) \<in> set pre"
-      using A by blast
-    obtain nn :: "'a \<times> ('a, 'b) operation \<Rightarrow> nat" where
-      f2: "\<forall>p. (\<forall>n. Deliver p \<notin> set (history n)) \<or> Broadcast p \<in> set (history (nn p))"
-      by (metis (no_types) delivery_has_a_cause)
-    have f3: "\<And>e. e \<in> set (history k) \<or> e \<notin> set pre"
-      using calculation prefix_elem_to_carriers by blast
-    have f4: "\<And>z n. (i, z) = (i, Store e mo i) \<or> Broadcast (i, z) \<notin> set (history n)"
-      using f2 by (metis assms(1) assms(2) fst_conv msg_id_unique prefix_msg_in_history)
-    { assume "Deliver (i, Store e mo i) \<notin> set pre"
-      have "(i, Store e aa i) = (i, Store e mo i) \<longrightarrow> Deliver (i, Store e mo i) \<in> set pre"
-        using f4 f3 f2 f1 by blast
-      then have ?thesis
-        using f4 f3 f2 f1 by blast }
-    then show ?thesis
-      by blast
   qed      
   ultimately show ?thesis
     using hb.intros(2) events_in_local_order by blast
@@ -346,33 +292,61 @@ proof -
   qed 
 qed
 
-lemma (in imap) concurrent_expunge_delete_independent_technical:
-  assumes "i \<in> is"
+lemma (in imap) concurrent_append_store_independent_technical:
+  assumes "i = mo"
     and "xs prefix of j"
-    and "(i, Expunge e mo i) \<in> set (node_deliver_messages xs)" 
-    and "(ir, Delete is e) \<in> set (node_deliver_messages xs)"
-  shows "hb (i, Expunge e mo i) (ir, Delete is e)"
+    and "(i, Append i e) \<in> set (node_deliver_messages xs)" 
+    and "(r, Store e mo r) \<in> set (node_deliver_messages xs)"
+  shows "hb (i, Append i e) (r, Store e mo r)"
 proof -
-  obtain pre k where "pre@[Broadcast (ir, Delete is e)] prefix of k"
+  obtain pre k where "pre@[Broadcast (r, Store e mo r)] prefix of k"
     using assms delivery_has_a_cause events_before_exist prefix_msg_in_history by blast
-  moreover hence A: "Deliver (i, Create i e) \<in> set pre \<or> Deliver (i, Append i e) \<in> set pre \<or> (\<exists> mo . Deliver (i, Expunge e mo i) \<in> set pre) \<or> (\<exists> mo . Deliver (i, Store e mo i) \<in> set pre)"
-    using Broadcast_Deliver_prefix_closed assms(1) by auto      
-  hence "Deliver (i, Expunge e mo i) \<in> set pre" using assms ids_are_unique
-  proof -
-    have "pre prefix of k"
-      using calculation by blast
-    then have f1: "\<And>e. e \<notin> set pre \<or> e \<in> set (history k)"
-      by (simp add: node_histories.prefix_elem_to_carriers node_histories_axioms)
-    have f2: "Deliver (i, Expunge e mo i) \<in> set (history j)"
-      by (meson assms network.prefix_msg_in_history network_axioms)
-    obtain nn :: "'a \<times> ('a, 'b) operation \<Rightarrow> nat" where
-      "\<And>p n. Deliver p \<notin> set (history n) \<or> Broadcast p \<in> set (history (nn p))"
-      by (metis (no_types) delivery_has_a_cause)
-    then show ?thesis
-      using f2 f1 by (metis (no_types) A fst_conv msg_id_unique)
-  qed     
-  ultimately show ?thesis
-    using hb.intros(2) events_in_local_order by blast
+  moreover hence f1: "Deliver (mo, Append mo e) \<in> set pre \<or> 
+  (\<exists> mo2 . Deliver (mo, Store e mo2 mo) \<in> set pre)"
+    using Broadcast_Store_Deliver_prefix_closed assms(1) by auto
+  have f2: "Deliver (i, Append i e) \<in> set (history j)"
+    by (meson assms network.prefix_msg_in_history network_axioms)
+  then show ?thesis using assms f1 
+    by (metis  calculation delivery_has_a_cause events_in_local_order fst_conv hb_deliver 
+        msg_id_unique node_histories.prefix_of_appendD node_histories_axioms 
+        prefix_elem_to_carriers)
+qed
+
+lemma (in imap) delete_prefix_options:
+  assumes "i \<in> is"
+    and "pre@[Broadcast (ir, Delete is e)] prefix of k" 
+  shows "Deliver (i, Create i e) \<in> set pre \<or>
+  Deliver (i, Append i e) \<in> set pre \<or> 
+  (\<exists> mo . Deliver (i, Expunge e mo i) \<in> set pre) \<or> 
+  (\<exists> mo . Deliver (i, Store e mo i) \<in> set pre)"
+proof -
+  show ?thesis using Broadcast_Deliver_prefix_closed assms
+    by (meson imap.Broadcast_Deliver_prefix_closed imap_axioms)
+qed
+
+lemma (in imap) concurrent_store_expunge_independent_technical:
+  assumes "xs prefix of j"
+    and "(i, Store e mo i) \<in> set (node_deliver_messages xs)" 
+    and "(r, Expunge e i r) \<in> set (node_deliver_messages xs)"
+  shows "hb (i, Store e mo i) (r, Expunge e i r)"
+proof -
+  obtain pre k where P: "pre@[Broadcast (r, Expunge e i r)] prefix of k"
+    using assms delivery_has_a_cause events_before_exist prefix_msg_in_history by blast
+  moreover hence f1: "Deliver (i, Append i e) \<in> set pre \<or> 
+  (\<exists> mo2 . Deliver (i, Store e mo2 i) \<in> set pre)"
+    using Broadcast_Expunge_Deliver_prefix_closed assms(1) by auto
+  hence f2: "Deliver (i, Append i e) \<notin> set (history k)"
+    by (metis Pair_inject assms(1) assms(2) fst_conv msg_id_unique network.delivery_has_a_cause 
+        network_axioms operation.distinct(17) prefix_msg_in_history)
+  from f1 obtain mo2 :: 'a where
+  "Deliver (i, Store e mo2 i) \<in> set (history k)" using f2
+    using calculation prefix_elem_to_carriers by blast  
+  hence "Deliver (i, Store e mo i) \<in> set (history k)" using assms ids_are_unique f1 f2 P 
+    by (metis fst_conv msg_id_unique network.delivery_has_a_cause network_axioms prefix_msg_in_history)    
+  then show ?thesis
+    using hb.intros(2) events_in_local_order f1 f2 P
+    by (metis delivery_has_a_cause fst_conv msg_id_unique node_histories.prefix_of_appendD 
+        node_histories_axioms prefix_elem_to_carriers)
 qed
 
 lemma (in imap) concurrent_store_store_independent_technical:
@@ -381,20 +355,44 @@ lemma (in imap) concurrent_store_store_independent_technical:
     and "(r, Store e i r) \<in> set (node_deliver_messages xs)"
   shows "hb (i, Store e mo i) (r, Store e i r)"
 proof -
-  obtain pre k where "pre@[Broadcast (r, Store e i r)] prefix of k"
+  obtain pre k where P: "pre@[Broadcast (r, Store e i r)] prefix of k"
     using assms delivery_has_a_cause events_before_exist prefix_msg_in_history by blast
-  moreover hence A: "Deliver (i, Append i e) \<in> set pre \<or> (\<exists> mo2 . Deliver (i, Store e mo2 i) \<in> set pre)"
-    using Broadcast_Store_Deliver_prefix_closed assms(1) by auto      
-  hence "Deliver (i, Store e mo i) \<in> set pre" using assms ids_are_unique
-  proof -
-    have "\<forall>e. e \<notin> set pre \<or> e \<in> set (history k)"
-      by (meson calculation node_histories.prefix_of_appendD node_histories_axioms prefix_to_carriers subset_iff)
-    then show ?thesis
-      by (metis (no_types) A assms(1) assms(2) delivery_has_a_cause fst_conv msg_id_unique prefix_msg_in_history)
-  qed     
-  ultimately show ?thesis
-    using hb.intros(2) events_in_local_order by blast
-qed 
+  hence f1: "\<forall>e. e \<notin> set pre \<or> e \<in> set (history k)"
+    using prefix_elem_to_carriers by blast
+  have f2: "Deliver (i, Append i e) \<in> set pre \<or> (\<exists> mo2 . Deliver (i, Store e mo2 i) \<in> set pre)"
+    using Broadcast_Store_Deliver_prefix_closed assms(1) P by auto     
+  hence "Deliver (i, Store e mo i) \<in> set pre" using assms ids_are_unique f1 
+    by (metis delivery_has_a_cause fst_conv msg_id_unique prefix_msg_in_history)
+  then show ?thesis
+    using hb.intros(2) events_in_local_order P by blast
+qed
+
+lemma (in imap) expunge_delete_tag_causality:
+  assumes "i \<in> is"
+    and "xs prefix of j"
+    and "(i, Expunge e1 mo i) \<in> set (node_deliver_messages xs)" 
+    and "(ir, Delete is e2) \<in> set (node_deliver_messages xs)" 
+    and "pre@[Broadcast (ir, Delete is e2)] prefix of k"
+  shows "Deliver (i, Expunge e2 mo i) \<in> set (history k)"
+proof- 
+  have f1: "Deliver (i, Append i e2) \<notin> set (history k)" using assms
+    by (metis fst_conv msg_id_unique network.delivery_has_a_cause network_axioms old.prod.inject 
+        operation.distinct(15) prefix_msg_in_history)
+  have f2: "Deliver (i, Create i e2) \<notin> set (history k)" using assms
+    by (metis fst_conv msg_id_unique network.delivery_has_a_cause network_axioms old.prod.inject 
+        operation.distinct(5) prefix_msg_in_history)
+  have f3: "\<forall> mo. Deliver (i, Store e2 mo i) \<notin> set (history k)" using assms
+    by (metis Pair_inject fst_conv msg_id_unique network.delivery_has_a_cause network_axioms 
+        operation.simps(25) prefix_msg_in_history)
+  hence "\<exists> mo1. Deliver (i, Expunge e2 mo1 i) \<in> set (history k)" using assms ids_are_unique f1 f2 
+    by (meson imap.Broadcast_Deliver_prefix_closed imap_axioms node_histories.prefix_of_appendD 
+        node_histories_axioms prefix_elem_to_carriers)
+  then obtain mo1 :: 'a where
+    "Deliver (i, Expunge e2 mo1 i) \<in> set (history k)" by blast
+  then show ?thesis  using assms f1 f2 f3
+    by (metis fst_conv msg_id_unique network.delivery_has_a_cause network_axioms old.prod.inject 
+        operation.inject(4) prefix_msg_in_history)
+qed
 
 
 lemma (in imap) expunge_delete_ids_imply_messages_same:
@@ -406,57 +404,38 @@ lemma (in imap) expunge_delete_ids_imply_messages_same:
 proof -
   obtain pre k where P: "pre@[Broadcast (ir, Delete is e2)] prefix of k"
     using assms delivery_has_a_cause events_before_exist prefix_msg_in_history by blast  
-  moreover hence A: 
-    "Deliver (i, Create i e2) \<in> set pre \<or> 
-    Deliver (i, Append i e2) \<in> set pre \<or> 
-    (\<exists> mo . Deliver (i, Expunge e2 mo i) \<in> set pre) \<or> 
-    (\<exists> mo . Deliver (i, Store e2 mo i) \<in> set pre)"
-    using Broadcast_Deliver_prefix_closed assms(1) by (meson imap.Broadcast_Deliver_prefix_closed imap_axioms)  
-  hence "Deliver (i, Expunge e2 mo i) \<in> set pre" using assms ids_are_unique
-  proof -
-    have kprefix: "pre prefix of k"
-      using calculation by blast
-    then have f1: "\<And>e2. e2 \<notin> set pre \<or> e2 \<in> set (history k)"
-      by (simp add: node_histories.prefix_elem_to_carriers node_histories_axioms)
-    have f2: "Deliver (i, Expunge e2 mo i) \<in> set (history j)"
-      using assms A P network.prefix_msg_in_history network_axioms
-    proof -
-      have f1: "\<forall>es n e. \<not> es prefix of n \<or> e \<notin> set es \<or> e \<in> set (history n)"
-        using prefix_elem_to_carriers by satx
-      have f2: "i \<in> set (added_ids [Deliver (i, Expunge e1 mo i)] e1)"
-        by simp
+  hence "Deliver (i, Expunge e2 mo i) \<in> set (history k)" using assms expunge_delete_tag_causality
+    by blast
+  then show ?thesis using assms
+    by (metis delivery_has_a_cause fst_conv network.msg_id_unique network_axioms 
+        operation.inject(4) prefix_msg_in_history prod.inject)
+qed
 
-      have f4: "\<forall>p n pa na. Broadcast p \<notin> set (history n) \<or> Broadcast pa \<notin> set (history na) \<or> fst p \<noteq> fst pa \<or> n = na \<and> p = pa"
-        using msg_id_unique by presburger
-      obtain nn :: "'a \<times> ('a, 'b) operation \<Rightarrow> nat" where
-        f5: "\<forall>p n. Deliver p \<notin> set (history n) \<or> Broadcast p \<in> set (history (nn p))"
-        by (metis (no_types) delivery_has_a_cause)
-      then have f6: "Broadcast (i, Expunge e1 mo i) \<in> set (history (nn (i, Expunge e1 mo i)))"
-        using assms(2) assms(3) prefix_msg_in_history by blast
-      then have "Deliver (i, Append i e2) \<notin> set (history k)"
-        using f5 f4 f2 by fastforce
-      then obtain aa :: 'a and aaa :: 'a where
-        f7: "Deliver (i, Create i e2) \<in> set pre \<or> Deliver (i, Expunge e2 aaa i) \<in> set pre \<or> Deliver (i, Store e2 aa i) \<in> set pre"
-        using f1 A kprefix by blast
-      have f8: "Deliver (i, Store e2 aa i) \<notin> set pre"
-        using f6 f5 f4 f2 f1 kprefix by fastforce
-      have "added_ids [Deliver (i, Create i e2)] e1 \<noteq> [] \<or> (i, Create i e2) \<noteq> (i, Expunge e1 mo i)"
-        by fastforce
-      then have "e2 = e1"
-        using f8 f7 f6 f5 f4 kprefix f1 by fastforce
-      then show ?thesis
-        by (meson assms(2) assms(3) network.prefix_msg_in_history network_axioms)
-    qed 
-    obtain nn :: "'a \<times> ('a, 'b) operation \<Rightarrow> nat" where
-      "\<And>p n. Deliver p \<notin> set (history n) \<or> Broadcast p \<in> set (history (nn p))"
-      by (metis (no_types) delivery_has_a_cause)
-    then show ?thesis
-      using f2 f1 by (metis (no_types) A fst_conv msg_id_unique)
+lemma (in imap) concurrent_expunge_delete_independent_technical:
+  assumes "i \<in> is"
+    and "xs prefix of j"
+    and "(i, Expunge e mo i) \<in> set (node_deliver_messages xs)" 
+    and "(ir, Delete is e) \<in> set (node_deliver_messages xs)"
+  shows "hb (i, Expunge e mo i) (ir, Delete is e)"
+proof -
+  obtain pre k where "pre@[Broadcast (ir, Delete is e)] prefix of k"
+    using assms delivery_has_a_cause events_before_exist prefix_msg_in_history by blast
+  moreover hence A: "Deliver (i, Create i e) \<in> set pre \<or> 
+  Deliver (i, Append i e) \<in> set pre \<or> 
+  (\<exists> mo . Deliver (i, Expunge e mo i) \<in> set pre) \<or> 
+  (\<exists> mo . Deliver (i, Store e mo i) \<in> set pre)"
+    using Broadcast_Deliver_prefix_closed assms(1) by auto      
+  hence "Deliver (i, Expunge e mo i) \<in> set pre" using assms ids_are_unique
+  proof -
+    have f1: "\<And>e. e \<notin> set pre \<or> e \<in> set (history k)"
+      using calculation prefix_elem_to_carriers by blast
+    have f2: "Deliver (i, Expunge e mo i) \<in> set (history j)"
+      by (meson assms network.prefix_msg_in_history network_axioms)
+    then show ?thesis using f1 A 
+      by (metis (no_types, lifting) fst_conv msg_id_unique network.delivery_has_a_cause network_axioms)
   qed     
-  moreover have "Deliver(i, Expunge e1 mo i) \<in> set (history j)"
-    using assms(2) assms(3) prefix_msg_in_history by blast
   ultimately show ?thesis
-    by (metis (no_types, lifting) delivery_has_a_cause fst_conv network.msg_id_unique network_axioms operation.inject(4) prefix_elem_to_carriers prefix_of_appendD prod.inject)
+    using hb.intros(2) events_in_local_order by blast
 qed
 
 lemma (in imap) store_delete_ids_imply_messages_same:
@@ -467,68 +446,29 @@ lemma (in imap) store_delete_ids_imply_messages_same:
   shows "e1 = e2"
 proof -
   obtain pre k where P: "pre@[Broadcast (ir, Delete is e2)] prefix of k"
-    using assms delivery_has_a_cause events_before_exist prefix_msg_in_history by blast  
-  moreover hence A: "Deliver (i, Create i e2) \<in> set pre \<or> Deliver (i, Append i e2) \<in> set pre \<or> (\<exists> mo . Deliver (i, Expunge e2 mo i) \<in> set pre) \<or> (\<exists> mo . Deliver (i, Store e2 mo i) \<in> set pre)"
-    using Broadcast_Deliver_prefix_closed assms(1)
-    by (meson imap.Broadcast_Deliver_prefix_closed imap_axioms)      
-  hence "Deliver (i, Store e2 mo i) \<in> set pre" using assms ids_are_unique P 
-  proof -
-    have "pre prefix of k"
-      using calculation by blast
-    then have "\<And>e2. \<not> node_histories history \<or> e2 \<notin> set pre \<or> e2 \<in> set (history k)"
-      by (simp add: node_histories.prefix_elem_to_carriers)
-    then have f1: "\<And>e2. e2 \<notin> set pre \<or> e2 \<in> set (history k)"
-      using node_histories_axioms by blast
-    have "\<And>f. \<not> network history (f::'a \<times> ('a, 'b) operation \<Rightarrow> 'a) \<or> Deliver (i, Store e2 mo i) \<in> set (history j)"
-      using assms network.prefix_msg_in_history P A
-    proof -
-      fix f :: "'a \<times> ('a, 'b) operation \<Rightarrow> 'a"
-      have f1: "\<forall>a. (a::'a) \<notin> {}"
-        by blast
-      have f2: "\<forall>f fa p n pa na. \<not> network f fa \<or> Broadcast (p::'a \<times> ('a, 'b) operation) \<notin> set (f n) \<or> Broadcast pa \<notin> set (f na) \<or> (fa p::'a) \<noteq> fa pa \<or> n = na \<and> p = pa"
-        by (meson network.msg_id_unique)
-      obtain nn :: "'a \<times> ('a, 'b) operation \<Rightarrow> nat" where
-        f3: "\<forall>p n. Deliver p \<notin> set (history n) \<or> Broadcast p \<in> set (history (nn p))"
-        by (metis (full_types) delivery_has_a_cause)
-      then have f4: "Broadcast (i, Store e1 mo i) \<in> set (history (nn (i, Store e1 mo i)))"
-        using assms(2) assms(3) prefix_msg_in_history by blast
-      obtain aa :: 'a and aaa :: 'a where
-        f5: "Deliver (i, Create i e2) \<in> set pre \<or> Deliver (i, Append i e2) \<in> set pre \<or> Deliver (i, Expunge e2 aaa i) \<in> set pre \<or> Deliver (i, Store e2 aa i) \<in> set pre"
-        using A by blast
-      have f6: "Deliver (i, Store e2 aa i) \<in> set (history k) \<longrightarrow> [i] = added_files [Deliver (i, Store e1 mo i)] e2"
-        using f4 f3 f2 by (metis (full_types) added_files_Deliver_Store_same_collapse fst_conv network_axioms)
-      have "Deliver (i, Expunge e2 aaa i) \<notin> set (history k)"
-        using f4 f3 f2 f1 by (metis (full_types) added_files_Deliver_Expunge_collapse added_files_Deliver_Store_same_collapse empty_set fst_conv list.set_intros(1) network_axioms)
-      then have f7: "Deliver (i, Expunge e2 aaa i) \<notin> set pre"
-        using \<open>pre prefix of k\<close> prefix_elem_to_carriers by blast
-      have f8: "Deliver (i, Create i e2) \<notin> set (history k)"
-        using f4 f3 f2 f1 by (metis (full_types) added_files_Deliver_Create_collapse added_files_Deliver_Store_same_collapse empty_set fst_conv list.set_intros(1) network_axioms)
-      { assume "added_files [Deliver (i, Store e1 mo i)] e2 = []"
-        then have "Deliver (i, Append i e2) \<notin> set (history k)"
-          using f4 f3 f2 f1 by (metis (full_types) added_files_Deliver_Append_same_collapse empty_set fst_conv list.set_intros(1) network_axioms)
-        then have "e1 = e2"
-          using f8 f7 f6 f5 f1 by (metis (no_types) \<open>pre prefix of k\<close> added_files_Deliver_Store_diff_collapse empty_set list.set_intros(1) prefix_elem_to_carriers) }
-      then have "(i, Store e2 mo i) \<in> set (node_deliver_messages xs)"
-        by (metis (no_types) added_files_Deliver_Store_diff_collapse assms(3))
-      then show "\<not> network history f \<or> Deliver (i, Store e2 mo i) \<in> set (history j)"
-        by (meson assms(2) network.prefix_msg_in_history)
-    qed 
-    then have f2: "Deliver (i, Store e2 mo i) \<in> set (history j)"
-      using network_axioms by blast
-    obtain nn :: "'a \<times> ('a, 'b) operation \<Rightarrow> nat" where
-      f3: "\<And>p n. Deliver p \<notin> set (history n) \<or> Broadcast p \<in> set (history (nn p))"
-      by (metis delivery_has_a_cause)
-    then have f4: "Broadcast (i, Store e2 mo i) \<in> set (history (nn (i, Store e2 mo i)))"
-      using f2 by blast
-    have "\<And>p. Deliver p \<notin> set pre \<or> Broadcast p \<in> set (history (nn p))"
-      using f3 f1 by blast
-    then show ?thesis
-      using f4 by (metis (no_types) A fst_conv msg_id_unique)
-  qed      
+    using assms delivery_has_a_cause events_before_exist prefix_msg_in_history by blast 
+  have f1: "Deliver (i, Append i e2) \<notin> set (history k)" using assms
+    by (metis fst_conv msg_id_unique network.delivery_has_a_cause network_axioms old.prod.inject 
+        operation.distinct(17) prefix_msg_in_history)
+  have f2: "\<forall> mo. Deliver (i, Expunge e2 mo i) \<notin> set (history k)" using assms
+    by (metis Pair_inject fst_conv msg_id_unique network.delivery_has_a_cause network_axioms 
+        operation.distinct(19) prefix_msg_in_history)
+  have f3: "Deliver (i, Create i e2) \<notin> set (history k)" using assms
+    by (metis fst_conv msg_id_unique network.delivery_has_a_cause network_axioms old.prod.inject 
+        operation.distinct(8) prefix_msg_in_history)
+  hence "(\<exists> mo1. Deliver (i, Store e2 mo1 i) \<in> set pre)" using assms P f1 f2 ids_are_unique imap_axioms 
+    by (meson imap.Broadcast_Deliver_prefix_closed prefix_elem_to_carriers prefix_of_appendD)
+  then obtain mo1 :: 'a where
+    f3: "Deliver (i, Store e2 mo1 i) \<in> set pre" by blast
+  then have f4: "Deliver (i, Store e2 mo1 i) \<in> set (history k)"
+    using P prefix_elem_to_carriers by blast 
+  hence "Deliver (i, Store e2 mo i) \<in> set pre" using f2 f3 assms 
+    by (metis fst_conv msg_id_unique network.delivery_has_a_cause network_axioms old.prod.inject 
+        operation.inject(5) prefix_msg_in_history)
   moreover have "Deliver(i, Store e1 mo i) \<in> set (history j)"
     using assms(2) assms(3) prefix_msg_in_history by blast 
-  ultimately show ?thesis
-    by (metis (no_types, lifting) delivery_has_a_cause fst_conv network.msg_id_unique network_axioms operation.inject(5) prefix_elem_to_carriers prefix_of_appendD prod.inject)
+  ultimately show ?thesis using f4
+    by (metis delivery_has_a_cause fst_conv msg_id_unique old.prod.inject operation.inject(5))
 qed
 
 lemma (in imap) create_delete_ids_imply_messages_same:
@@ -540,53 +480,21 @@ lemma (in imap) create_delete_ids_imply_messages_same:
 proof -
   obtain pre k where P: "pre@[Broadcast (ir, Delete is e2)] prefix of k"
     using assms delivery_has_a_cause events_before_exist prefix_msg_in_history by blast
-  moreover hence A: "Deliver (i, Create i e2) \<in> set pre \<or> Deliver (i, Append i e2) \<in> set pre \<or> (\<exists> mo . Deliver (i, Expunge e2 mo i) \<in> set pre) \<or> (\<exists> mo . Deliver (i, Store e2 mo i) \<in> set pre)"
-    using Broadcast_Deliver_prefix_closed assms(1) ids_are_unique by blast      
-  hence "Deliver (i, Create i e2) \<in> set pre" using assms ids_are_unique P
-  proof -
-    obtain aa :: 'a and aaa :: 'a where
-      f1: "(Deliver (i, Append i e2) \<in> set pre \<or> (\<exists>a. Deliver (i, Expunge e2 a i) \<in> set pre) \<or> (\<exists>a. Deliver (i, Store e2 a i) \<in> set pre)) = (Deliver (i, Append i e2) \<in> set pre \<or> Deliver (i, Expunge e2 aaa i) \<in> set pre \<or> Deliver (i, Store e2 aa i) \<in> set pre)"
-      by blast
-    have f2: "\<forall>p n pa na. Broadcast p \<notin> set (history n) \<or> Broadcast pa \<notin> set (history na) \<or> fst p \<noteq> fst pa \<or> n = na \<and> p = pa"
-      using msg_id_unique by presburger
-    obtain nn :: "'a \<times> ('a, 'b) operation \<Rightarrow> nat" where
-      f3: "\<forall>p n. Deliver p \<notin> set (history n) \<or> Broadcast p \<in> set (history (nn p))"
-      by (metis (no_types) delivery_has_a_cause)
-    then have f4: "Broadcast (i, Create i e2) \<in> set (history (nn (i, Create i e2)))"
-      using assms prefix_msg_in_history P A
-    proof -
-      obtain aab :: 'a and aac :: 'a where
-        x1: "Deliver (i, Create i e2) \<in> set pre \<or> Deliver (i, Append i e2) \<in> set pre \<or> Deliver (i, Expunge e2 aac i) \<in> set pre \<or> Deliver (i, Store e2 aab i) \<in> set pre"
-        using A by blast
-      have x2: "\<forall>f fa p n pa na. \<not> network f fa \<or> Broadcast (p::'a \<times> ('a, 'b) operation) \<notin> set (f n) \<or> Broadcast pa \<notin> set (f na) \<or> (fa p::'a) \<noteq> fa pa \<or> n = na \<and> p = pa"
-        by (meson network.msg_id_unique)
-      have x3: "Broadcast (i, Create i e1) \<in> set (history (nn (i, Create i e1)))"
-        using assms(2) assms(3) f3 prefix_msg_in_history by blast
-      then have x4: "Deliver (i, Store e2 aab i) \<notin> set (history k)"
-        using x2 by (metis (full_types) added_files_Deliver_Create_collapse added_files_Deliver_Store_same_collapse empty_iff empty_set f3 fst_conv list.set_intros(1) network_axioms)
-      have x5: "Deliver (i, Append i e2) \<notin> set (history k)"
-        using x3 f2 by (metis (full_types) added_files_Deliver_Create_collapse added_files_Deliver_Append_same_collapse empty_iff empty_set f3 fst_conv list.set_intros(1))
-      have "Deliver (i, Expunge e2 aac i) \<notin> set (history k)"
-        using x3 f2 by (metis (no_types) f3 fst_conv operation.distinct(5) prod.inject)
-      then show ?thesis
-        using x5 x4 x1 calculation f3 prefix_elem_to_carriers by blast
-    qed 
-    have f5: "\<forall>es n e. \<not> es prefix of n \<or> e \<notin> set es \<or> e \<in> set (history n)"
-      using prefix_elem_to_carriers by blast
-    then have f6: "Deliver (i, Append i e2) \<in> set pre \<longrightarrow> nn (i, Append i e2) = nn (i, Create i e2) \<and> (i, Append i e2) = (i, Create i e2)"
-      using f4 f3 f2  by (metis calculation fst_conv node_histories.prefix_of_appendD node_histories_axioms)
-    have f7: "Deliver (i, Expunge e2 aaa i) \<in> set pre \<longrightarrow> nn (i, Expunge e2 aaa i) = nn (i, Create i e2) \<and> (i, Expunge e2 aaa i) = (i, Create i e2)"
-      using f5 f4 f3 f2 by (metis calculation fst_conv node_histories.prefix_of_appendD node_histories_axioms)
-    have "Deliver (i, Store e2 aa i) \<in> set pre \<longrightarrow> Deliver (i, Create i e2) \<in> set pre"
-      using f5 f4 f3 f2 by (metis calculation fst_conv node_histories.prefix_of_appendD node_histories_axioms)
-    then show ?thesis
-      using f7 f6 f1 A by blast
-  qed      
-  moreover have "Deliver (i, Create i e1) \<in> set (history j)"
-    using assms(2) assms(3) prefix_msg_in_history by blast
-  ultimately show ?thesis
-    by (metis fst_conv msg_id_unique network.delivery_has_a_cause network_axioms operation.inject(1)
-        prefix_elem_to_carriers prefix_of_appendD prod.inject)
+  have f1: "Deliver (i, Append i e2) \<notin> set (history k)"
+    by (metis assms(2) assms(3) delivery_has_a_cause fst_conv network.msg_id_unique 
+        network.prefix_msg_in_history network_axioms operation.distinct(3) prod.inject)
+  have f2: "\<forall> mo. Deliver (i, Expunge e2 mo i) \<notin> set (history k)"
+   by (metis assms(2) assms(3) fst_conv msg_id_unique network.delivery_has_a_cause network_axioms 
+       old.prod.inject operation.distinct(5) prefix_msg_in_history)
+  have f3: "\<forall> mo. Deliver (i, Store e2 mo i) \<notin> set (history k)"
+    by (metis Pair_inject assms(2) assms(3) delivery_has_a_cause fst_conv msg_id_unique 
+        operation.distinct(7) prefix_msg_in_history)
+  hence "Deliver (i, Create i e2) \<in> set pre" using assms ids_are_unique P f2 f1 imap_axioms
+    by (meson imap.Broadcast_Deliver_prefix_closed  prefix_elem_to_carriers prefix_of_appendD)
+  then show ?thesis using f1 f2 f3
+    by (metis (no_types, lifting) P assms(2) assms(3) delivery_has_a_cause fst_conv msg_id_unique 
+        node_histories.prefix_of_appendD node_histories_axioms old.prod.inject operation.inject(1) 
+        prefix_elem_to_carriers prefix_msg_in_history)
 qed
 
 lemma (in imap) append_delete_ids_imply_messages_same:
@@ -598,41 +506,23 @@ lemma (in imap) append_delete_ids_imply_messages_same:
 proof -
   obtain pre k where P: "pre@[Broadcast (ir, Delete is e2)] prefix of k"
     using assms delivery_has_a_cause events_before_exist prefix_msg_in_history by blast  
-  moreover hence A: "Deliver (i, Create i e2) \<in> set pre \<or> Deliver (i, Append i e2) \<in> set pre \<or> (\<exists> mo . Deliver (i, Expunge e2 mo i) \<in> set pre) \<or> (\<exists> mo . Deliver (i, Store e2 mo i) \<in> set pre)"
-    using Broadcast_Deliver_prefix_closed assms(1)
-    by (meson imap.Broadcast_Deliver_prefix_closed imap_axioms)      
-  hence "Deliver (i, Append i e2) \<in> set pre" using assms ids_are_unique 
-  proof -
-  
-    have f1: "\<forall>f fa p n pa na. \<not> network f fa \<or> Broadcast (p::'a \<times> ('a, 'b) operation) \<notin> set (f n) \<or> Broadcast pa \<notin> set (f na) \<or> (fa p::'a) \<noteq> fa pa \<or> n = na \<and> p = pa"
-      by (meson network.msg_id_unique)
-    obtain nn :: "'a \<times> ('a, 'b) operation \<Rightarrow> nat" where
-      f2: "\<forall>p n. Deliver p \<notin> set (history n) \<or> Broadcast p \<in> set (history (nn p))"
-      by (metis (no_types) delivery_has_a_cause)
-    then have f3: "Broadcast (i, Append i e1) \<in> set (history (nn (i, Append i e1)))"
-      using assms(2) assms(3) prefix_msg_in_history by blast
-    obtain aa :: 'a and aaa :: 'a where
-      f4: "(Deliver (i, Create i e2) \<in> set pre \<or> (\<exists>a. Deliver (i, Expunge e2 a i) \<in> set pre) \<or> (\<exists>a. Deliver (i, Store e2 a i) \<in> set pre)) = (Deliver (i, Create i e2) \<in> set pre \<or> Deliver (i, Expunge e2 aaa i) \<in> set pre \<or> Deliver (i, Store e2 aa i) \<in> set pre)"
-      by blast
-    have f5: "\<forall>a. (a::'a) \<notin> {}"
-      by (meson empty_iff)
-    have f6: "\<forall>e. e \<notin> set pre \<or> e \<in> set (history k)"
-      by (meson calculation node_histories.prefix_of_appendD node_histories_axioms prefix_to_carriers subset_iff)
-    then have "Deliver (i, Store e2 aa i) \<in> set pre \<longrightarrow> Broadcast (i, Store e2 aa i) \<in> set (history (nn (i, Store e2 aa i)))"
-      using f2 by blast
-    then have f7: "Deliver (i, Store e2 aa i) \<in> set pre \<longrightarrow> nn (i, Store e2 aa i) = nn (i, Append i e1) \<and> (i, Store e2 aa i) = (i, Append i e1)"
-      using f3 f1 by (metis fst_conv network_axioms)
-    have f8: "Deliver (i, Create i e2) \<notin> set pre"
-      using f6 f5 f3 f2 f1 by (metis (no_types) added_files_Deliver_Create_collapse added_files_Deliver_Append_same_collapse empty_set fst_conv list.set_intros(1) network_axioms)
-    have "Deliver (i, Expunge e2 aaa i) \<notin> set pre"
-      using f6 f5 f3 f2 f1 by (metis (no_types) added_files_Deliver_Append_same_collapse added_files_Deliver_Expunge_collapse empty_set fst_conv list.set_intros(1) network_axioms)
-    then show ?thesis
-      using f8 f7 f4 A by blast
-  qed      
+  hence f1: "\<forall>e. e \<notin> set pre \<or> e \<in> set (history k)" using prefix_elem_to_carriers by blast
+  have f2: "Deliver (i, Create i e2) \<notin> set pre" using P delete_prefix_options f1
+    by (metis assms(2) assms(3) fst_conv msg_id_unique network.delivery_has_a_cause network_axioms 
+        old.prod.inject operation.distinct(3) prefix_msg_in_history)
+  moreover have "\<forall> mo. Deliver (i, Expunge e2 mo i) \<notin> set pre" using P delete_prefix_options f1
+    by (metis Pair_inject assms(2) assms(3) fst_conv msg_id_unique network.delivery_has_a_cause 
+        network_axioms operation.distinct(15) prefix_msg_in_history)
+  moreover have "\<forall> mo. Deliver (i, Store e2 mo i) \<notin> set pre" using P delete_prefix_options f1
+    by (metis Pair_inject assms(2) assms(3) fst_conv msg_id_unique network.delivery_has_a_cause 
+        network_axioms operation.simps(23) prefix_msg_in_history)
+  moreover hence "Deliver (i, Append i e2) \<in> set pre" 
+    using P delete_prefix_options calculation(3) f2 assms(1) calculation(2) by blast     
   moreover have "Deliver (i, Append i e1) \<in> set (history j)"
     using assms(2) assms(3) prefix_msg_in_history by blast
-  ultimately show ?thesis
-    by (metis (no_types, lifting) fst_conv network.delivery_has_a_cause network.msg_id_unique network_axioms operation.inject(3) prefix_elem_to_carriers prefix_of_appendD prod.inject)
+  ultimately show ?thesis using assms delete_prefix_options 
+    by (metis f1 msg_id_unique network.delivery_has_a_cause network_axioms old.prod.inject 
+        operation.inject(3) prod.sel(1))
 qed
 
 lemma (in imap) append_expunge_ids_imply_messages_same:
