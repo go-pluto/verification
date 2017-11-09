@@ -80,8 +80,8 @@ corollary (in imap) concurrent_store_expunge_independent:
     and "(r, Expunge e2 mo2 r) \<in> set (node_deliver_messages xs)"
   shows "i \<noteq> mo2 \<and> r \<noteq> mo"
   using assms expunge_store_ids_imply_messages_same concurrent_store_expunge_independent_technical2 
-    concurrent_store_expunge_independent_technical 
-  by metis
+    concurrent_store_expunge_independent_technical by metis
+
 
 corollary (in imap) concurrent_store_store_independent:
   assumes "\<not> hb (i, Store e1 mo i) (r, Store e2 mo2 r)" 
@@ -103,9 +103,9 @@ proof -
       "hb.concurrent (a, b) (x, y)"
     hence "interp_msg (a, b) \<rhd> interp_msg (x, y) = interp_msg (x, y) \<rhd> interp_msg (a, b)" 
       apply(unfold interp_msg_def, case_tac "b"; case_tac "y"; 
-           simp add: create_create_commute delete_delete_commute append_append_commute 
-           create_append_commute create_expunge_commute create_store_commute 
-           expunge_expunge_commute hb.concurrent_def)
+          simp add: create_create_commute delete_delete_commute append_append_commute 
+          create_append_commute create_expunge_commute create_store_commute 
+          expunge_expunge_commute hb.concurrent_def)
       using assms prefix_contains_msg apply (metis (full_types) 
           create_id_valid create_delete_commute concurrent_create_delete_independent)
       using assms prefix_contains_msg apply (metis (full_types) 
@@ -162,7 +162,7 @@ sublocale sec: strong_eventual_consistency weak_hb hb interp_msg
   "\<lambda>ops.\<exists>xs i. xs prefix of i \<and> node_deliver_messages xs = ops" "\<lambda>x.({},{})"
   apply(standard; clarsimp simp add: hb_consistent_prefix node_deliver_messages_distinct
       concurrent_operations_commute)
-   apply(metis (no_types, lifting) apply_operations_def bind.bind_lunit not_None_eq
+  apply(metis (no_types, lifting) apply_operations_def bind.bind_lunit not_None_eq
       hb.apply_operations_Snoc kleisli_def apply_operations_never_fails interp_msg_def)
   using drop_last_message apply blast
   done

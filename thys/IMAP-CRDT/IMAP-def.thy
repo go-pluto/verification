@@ -7,7 +7,7 @@ We use the \texttt{network\_with\_constrained\_ops} locale from the framework.\<
 theory
   "IMAP-def"
   imports
-    "../CRDT/Network"
+    "CRDT.Network"
 begin
 
 datatype ('id, 'a) operation = 
